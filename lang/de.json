@@ -23,9 +23,8 @@
     "Cancel": "Abbrechen",
     "Restore": "Original wiederherstellen",
     "RestoreConfirm": "Original-Text von {count} Journal(en) wiederherstellen? Die Übersetzung geht dabei verloren.",
-    "EstimateButton": "Kosten schätzen",
+    "EstimateButton": "Kosten berechnen",
     "Start": "Übersetzen",
-    "Estimate": "{segments} Textabschnitte in ca. {requests} Anfragen. Geschätzt ~{input} Eingabe- und ~{output} Ausgabe-Token. Multipliziere mit den Preisen deines Modells (pro 1 Mio. Token).",
     "Progress": "{done}/{total} Abschnitte, {failed} fehlgeschlagen · Token: {input} ein / {output} aus",
     "Usage": "Verbrauch: {input} Eingabe-Token, {output} Ausgabe-Token.",
     "ContextTranslate": "Übersetzen …",
@@ -43,15 +42,61 @@
     },
     "Settings": {
       "Open": "Einstellungen",
-      "Provider": { "Name": "KI-Anbieter", "Hint": "Welcher Dienst die Übersetzung übernimmt." },
-      "ApiKey": { "Name": "API-Key: {provider}", "Hint": "Wird nur in diesem Browser gespeichert (Client-Einstellung) und direkt an den Anbieter gesendet." },
-      "Model": { "Name": "Modell: {provider}", "Hint": "Modell-ID laut Dokumentation des Anbieters." },
-      "BaseUrl": { "Name": "Basis-URL (OpenAI-kompatibel)", "Hint": "z. B. https://openrouter.ai/api/v1, https://api.mistral.ai/v1 oder http://localhost:11434/v1 (Ollama)." },
-      "Effort": { "Name": "Claude: Effort", "Hint": "Wie gründlich Claude nachdenkt. Für Übersetzungen reicht meist „low“, das ist günstiger und schneller." },
-      "SourceLanguage": { "Name": "Ausgangssprache" },
-      "TargetLanguage": { "Name": "Zielsprache", "Hint": "Sprache, in die übersetzt wird (am besten auf Englisch angeben, z. B. German)." },
-      "MaxChars": { "Name": "Zeichen pro Anfrage", "Hint": "Größere Anfragen sind günstiger (weniger wiederholter Prompt), kleinere robuster." },
-      "Concurrency": { "Name": "Parallele Anfragen", "Hint": "Bei Rate-Limit-Fehlern verringern." }
-    }
+      "Provider": {
+        "Name": "KI-Anbieter",
+        "Hint": "Welcher Dienst die Übersetzung übernimmt."
+      },
+      "ApiKey": {
+        "Name": "API-Key: {provider}",
+        "Hint": "Wird nur in diesem Browser gespeichert (Client-Einstellung) und direkt an den Anbieter gesendet."
+      },
+      "Model": {
+        "Name": "Modell: {provider}",
+        "Hint": "Modell-ID laut Dokumentation des Anbieters."
+      },
+      "BaseUrl": {
+        "Name": "Basis-URL (OpenAI-kompatibel)",
+        "Hint": "z. B. https://openrouter.ai/api/v1, https://api.mistral.ai/v1 oder http://localhost:11434/v1 (Ollama)."
+      },
+      "Effort": {
+        "Name": "Claude: Effort",
+        "Hint": "Wie gründlich Claude nachdenkt. Für Übersetzungen reicht meist „low“, das ist günstiger und schneller."
+      },
+      "SourceLanguage": {
+        "Name": "Ausgangssprache"
+      },
+      "TargetLanguage": {
+        "Name": "Zielsprache",
+        "Hint": "Sprache, in die übersetzt wird (am besten auf Englisch angeben, z. B. German)."
+      },
+      "MaxChars": {
+        "Name": "Zeichen pro Anfrage",
+        "Hint": "Größere Anfragen sind günstiger (weniger wiederholter Prompt), kleinere robuster."
+      },
+      "Concurrency": {
+        "Name": "Parallele Anfragen",
+        "Hint": "Bei Rate-Limit-Fehlern verringern."
+      },
+      "PriceInput": {
+        "Name": "Preis Eingabe (USD pro 1 Mio. Token)",
+        "Hint": "0 = eingebaute Preisliste für bekannte Modelle verwenden. Nur für die Kostenschätzung."
+      },
+      "PriceOutput": {
+        "Name": "Preis Ausgabe (USD pro 1 Mio. Token)"
+      }
+    },
+    "Counting": "Zähle Token mit dem Tokenizer des Anbieters …",
+    "Count": {
+      "Exact": "Exakt gezählt über die Token-Zählung des Anbieters (kostenlos) für {model}.",
+      "Tokenizer": "Gezählt mit dem OpenAI-Tokenizer (o200k) für {model}. Bei anderen Anbietern ist das eine gute Näherung.",
+      "Input": "{segments} Textabschnitte in {requests} Anfragen: <strong>{input} Eingabe-Token</strong> (davon {system} Token Anweisungen + Glossar pro Anfrage).",
+      "Output": "Geschätzte Ausgabe: <strong>{low} – {high} Token</strong> (Deutsch ist etwas länger als Englisch).",
+      "Cost": "Geschätzte Kosten: {low} – {high}",
+      "PriceList": "Preise laut eingebauter Liste: ${input} / ${output} pro 1 Mio. Token (Eingabe/Ausgabe). Bitte beim Anbieter prüfen, in den Einstellungen überschreibbar.",
+      "PriceSettings": "Preise aus den Einstellungen: ${input} / ${output} pro 1 Mio. Token (Eingabe/Ausgabe).",
+      "NoPrice": "Für dieses Modell ist kein Preis bekannt. Trage ihn in den Einstellungen ein, um Kosten zu sehen.",
+      "Thinking": "Modelle mit Denkmodus (Claude, GPT-5, Gemini Pro) erzeugen zusätzliche Denk-Token, die als Ausgabe zählen. Tipp: Übersetze zuerst ein Kapitel; danach siehst du die echten Kosten."
+    },
+    "ActualCost": "Tatsächliche Kosten: {cost}."
   }
 }

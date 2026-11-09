@@ -117,8 +117,7 @@ export async function translateItems({
 
   const callModel = async (context, batchItems, attempt) => {
     if (signal?.aborted) throw new AbortError();
-    const payload = { context, segments: batchItems.map((i) => i.html) };
-    let user = JSON.stringify(payload);
+    let user = batchPayload(context, batchItems);
     if (attempt > 0) {
       user = `Previous attempt broke the markup. Be very careful to keep every data-k element and every x-e element exactly once.\n${user}`;
     }
@@ -180,6 +179,57 @@ export async function translateItems({
   onProgress?.({ ...progress });
   await Promise.all(Array.from({ length: Math.max(1, Math.min(concurrency, batches.length)) }, worker));
   return { results, ...progress };
+}
+
+/** The user message sent for one batch. */
+export function batchPayload(context, items) {
+  return JSON.stringify({ context, segments: items.map((i) => i.html) });
+}
+
+/** Typical growth of the output relative to the input when translating English into German. */
+export const OUTPUT_RATIO = { low: 1.2, mid: 1.4, high: 1.6 };
+
+/**
+ * Count the tokens of the requests that a translation run would send, without generating.
+ * Input tokens are counted with the provider's tokenizer (exact up to a few tokens of
+ * per-request overhead); output tokens are estimated from the input with OUTPUT_RATIO.
+ * @param {object} provider  provider with countTokens({ system, chunks })
+ */
+export async function countRequests(items, { provider, maxChars = 6000, prompt, signal }) {
+  const batches = makeBatches(items, { maxChars });
+  const system = buildSystemPrompt(prompt ?? {});
+  const payloads = batches.map((b) => batchPayload(b.context, b.items));
+  // Combine payloads into large chunks so that only a few counting calls are needed.
+  const chunks = [];
+  let cur = "";
+  for (const p of payloads) {
+    if (cur && cur.length + p.length > 400000) {
+      chunks.push(cur);
+      cur = "";
+    }
+    cur += (cur ? "\n" : "") + p;
+  }
+  if (cur) chunks.push(cur);
+
+  const counted = await provider.countTokens({ system, chunks, signal });
+  const requests = batches.length;
+  const payloadTokens = counted.chunks;
+  const inputTokens = requests * (counted.system + counted.perRequest) + payloadTokens;
+  const output = {
+    low: Math.round(payloadTokens * OUTPUT_RATIO.low),
+    mid: Math.round(payloadTokens * OUTPUT_RATIO.mid),
+    high: Math.round(payloadTokens * OUTPUT_RATIO.high)
+  };
+  return {
+    segments: items.length, requests, systemTokens: counted.system, payloadTokens,
+    inputTokens, outputTokens: output, method: counted.method
+  };
+}
+
+/** Price in USD for the given token counts and prices per million tokens. */
+export function priceOf(input, output, price) {
+  if (!price) return null;
+  return (input * price.input + output * price.output) / 1e6;
 }
 
 /** Rough token estimate without calling any API. */

@@ -1,5 +1,6 @@
 import { MODULE_ID, getSetting, setSetting, providerConfig, DEFAULT_GLOSSARY, DEFAULT_INSTRUCTIONS } from "./settings.js";
-import { translateEntries, estimateEntries, restoreEntry, hasBackup } from "./journal.js";
+import { translateEntries, countEntries, restoreEntry, hasBackup } from "./journal.js";
+import { priceOf } from "./core/translator.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 const t = (k, data) => (data ? game.i18n.format(`JOURNAL_TRANSLATOR.${k}`, data) : game.i18n.localize(`JOURNAL_TRANSLATOR.${k}`));
@@ -136,14 +137,37 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   static async #onEstimate() {
-    if (!this.#requireSelection()) return;
+    if (this.running || !this.#requireSelection()) return;
     await this.#saveTexts();
-    const est = estimateEntries(this.selectedEntries, { force: this.force });
-    const fmt = (n) => n.toLocaleString(game.i18n.lang);
-    this.#setStatus(t("Estimate", {
-      segments: fmt(est.segments), requests: fmt(est.requests),
-      input: fmt(est.inputTokens), output: fmt(est.outputTokens)
-    }));
+    const cfg = providerConfig();
+    const fmt = (n) => Math.round(n).toLocaleString(game.i18n.lang);
+    const usd = (n) => (n < 0.01 ? "< $0.01" : `$${n.toFixed(2)}`);
+    this.#setStatus(`<i class="fa-solid fa-spinner fa-spin"></i> ${t("Counting")}`);
+    try {
+      const c = await countEntries(this.selectedEntries, { force: this.force });
+      const lines = [
+        t(c.method === "api" ? "Count.Exact" : "Count.Tokenizer", { model: cfg.model }),
+        t("Count.Input", {
+          segments: fmt(c.segments), requests: fmt(c.requests), input: fmt(c.inputTokens),
+          system: fmt(c.systemTokens)
+        }),
+        t("Count.Output", { low: fmt(c.outputTokens.low), high: fmt(c.outputTokens.high) })
+      ];
+      if (cfg.price) {
+        const low = priceOf(c.inputTokens, c.outputTokens.low, cfg.price);
+        const high = priceOf(c.inputTokens, c.outputTokens.high, cfg.price);
+        lines.push(`<strong>${t("Count.Cost", { low: usd(low), high: usd(high) })}</strong>`);
+        lines.push(`<span class="hint">${t(cfg.price.source === "settings" ? "Count.PriceSettings" : "Count.PriceList", {
+          input: cfg.price.input, output: cfg.price.output })}</span>`);
+      } else {
+        lines.push(`<span class="hint">${t("Count.NoPrice")}</span>`);
+      }
+      lines.push(`<span class="hint">${t("Count.Thinking")}</span>`);
+      this.#setStatus(lines.join("<br>"));
+    } catch (err) {
+      console.error(err);
+      this.#setStatus(`<span class="jt-error">${foundry.utils.escapeHTML?.(err.message) ?? err.message}</span>`);
+    }
   }
 
   static async #onStart() {
@@ -171,7 +195,9 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       });
       const minutes = Math.max(1, Math.round((Date.now() - started) / 60000));
       const msg = t("Notify.Done", { done: fmt(res.done), failed: fmt(res.failed), minutes });
-      this.#setStatus(`${msg}<br>${t("Usage", { input: fmt(res.usage.input), output: fmt(res.usage.output) })}`);
+      const cost = priceOf(res.usage.input, res.usage.output, providerConfig().price);
+      this.#setStatus(`${msg}<br>${t("Usage", { input: fmt(res.usage.input), output: fmt(res.usage.output) })}` +
+        (cost !== null ? ` ${t("ActualCost", { cost: `$${cost.toFixed(2)}` })}` : ""));
       if (res.failed) ui.notifications.warn(msg);
       else ui.notifications.info(msg);
       if (this.mode === "copy") this.selected = new Set(res.entries.map((e) => e.id));

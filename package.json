@@ -3,9 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "build:tokenizer": "esbuild tools/tokenizer-entry.js --bundle --format=esm --minify --legal-comments=inline --outfile=scripts/vendor/o200k.js"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
+    "gpt-tokenizer": "^4.1.0",
     "jsdom": "^25.0.1"
   }
 }

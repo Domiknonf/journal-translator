@@ -1,4 +1,4 @@
-import { PROVIDERS } from "./providers/index.js";
+import { PROVIDERS, PRICES } from "./providers/index.js";
 
 export const MODULE_ID = "journal-translator";
 
@@ -99,6 +99,15 @@ export function registerSettings() {
     choices: { "": "Standard", low: "low", medium: "medium", high: "high" }
   });
 
+  s("priceInput", {
+    name: L("PriceInput.Name"), hint: L("PriceInput.Hint"),
+    scope: "client", config: true, type: Number, default: 0
+  });
+  s("priceOutput", {
+    name: L("PriceOutput.Name"), hint: L("PriceInput.Hint"),
+    scope: "client", config: true, type: Number, default: 0
+  });
+
   s("sourceLanguage", {
     name: L("SourceLanguage.Name"), scope: "world", config: true, type: String, default: "English"
   });
@@ -109,8 +118,8 @@ export function registerSettings() {
 
   s("maxChars", {
     name: L("MaxChars.Name"), hint: L("MaxChars.Hint"),
-    scope: "client", config: true, type: Number, default: 6000,
-    range: { min: 1000, max: 20000, step: 500 }
+    scope: "client", config: true, type: Number, default: 12000,
+    range: { min: 2000, max: 30000, step: 1000 }
   });
   s("concurrency", {
     name: L("Concurrency.Name"), hint: L("Concurrency.Hint"),
@@ -139,13 +148,24 @@ export function maskKeyInputs(html) {
   }
 }
 
+/** Price per 1M tokens: settings override, else the built-in list, else null. */
+export function priceFor(model) {
+  const input = Number(getSetting("priceInput")) || 0;
+  const output = Number(getSetting("priceOutput")) || 0;
+  if (input || output) return { input, output, source: "settings" };
+  const known = PRICES[model];
+  return known ? { ...known, source: "list" } : null;
+}
+
 export function providerConfig() {
   const id = getSetting("provider");
   const p = PROVIDERS[id] ?? PROVIDERS.openai;
+  const model = getSetting(`${id}Model`) || p.defaultModel;
   return {
+    price: priceFor(model),
     id,
     label: p.label,
-    model: getSetting(`${id}Model`) || p.defaultModel,
+    model,
     apiKey: getSetting(`${id}ApiKey`),
     baseUrl: getSetting("compatibleBaseUrl"),
     effort: getSetting("anthropicEffort") || undefined

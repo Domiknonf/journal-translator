@@ -32,6 +32,40 @@ export const PROVIDERS = {
   }
 };
 
+/**
+ * List prices in USD per 1M tokens (input / output) for common models. Prices change, so
+ * they can be overridden in the module settings. Unknown models show token counts only.
+ */
+export const PRICES = {
+  "claude-fable-5-1": { input: 10, output: 50 },
+  "claude-opus-5-5": { input: 4, output: 20 },
+  "claude-sonnet-5-5": { input: 2, output: 10 },
+  "claude-haiku-5-5": { input: 0.1, output: 0.5 },
+  "gpt-5": { input: 1.25, output: 10 },
+  "gpt-5-mini": { input: 0.25, output: 2 },
+  "gpt-5-nano": { input: 0.05, output: 0.4 },
+  "gpt-4.1": { input: 2, output: 8 },
+  "gpt-4.1-mini": { input: 0.4, output: 1.6 },
+  "gpt-4o-mini": { input: 0.15, output: 0.6 },
+  "gemini-2.5-pro": { input: 1.25, output: 10 },
+  "gemini-2.5-flash": { input: 0.3, output: 2.5 },
+  "gemini-2.5-flash-lite": { input: 0.1, output: 0.4 }
+};
+
+/** Local o200k tokenizer (OpenAI GPT-4o/GPT-5 family), loaded only when needed (~2.8 MB). */
+let tokenizer = null;
+export async function localCount(text) {
+  tokenizer ??= await import("../vendor/o200k.js");
+  return tokenizer.countTokens(text);
+}
+
+async function countLocally({ system, chunks }) {
+  let total = 0;
+  for (const c of chunks) total += await localCount(c);
+  // Chat format adds a few tokens per message.
+  return { system: (await localCount(system)) + 4, perRequest: 8, chunks: total, method: "tokenizer" };
+}
+
 export class ProviderError extends Error {
   constructor(message, { status, fatal = false } = {}) {
     super(message);
@@ -94,6 +128,9 @@ function requireKey(apiKey, label) {
 
 /** OpenAI Chat Completions, and any server that speaks the same protocol. */
 export function openAICompatible({ apiKey, model, baseUrl, strictSchema, fetchImpl }) {
+  // Reasoning models think before answering and bill those tokens as output. Translation
+  // needs little reasoning, so keep it low. Only sent to OpenAI models that accept it.
+  const reasoning = strictSchema && /^(gpt-5|o[1-9])/.test(model ?? "") ? "low" : null;
   if (!baseUrl) throw new ProviderError("No base URL configured for the OpenAI-compatible provider.", { fatal: true });
   if (strictSchema) requireKey(apiKey, "OpenAI");
   if (!model) throw new ProviderError("No model configured.", { fatal: true });
@@ -110,6 +147,7 @@ export function openAICompatible({ apiKey, model, baseUrl, strictSchema, fetchIm
           ? { type: "json_schema", json_schema: { name: "translations", strict: true, schema } }
           : { type: "json_object" }
       };
+      if (reasoning) body.reasoning_effort = reasoning;
       const headers = apiKey ? { authorization: `Bearer ${apiKey}` } : {};
       const data = await postJSON(url, { headers, body, signal, fetchImpl });
       const choice = data.choices?.[0];
@@ -119,7 +157,8 @@ export function openAICompatible({ apiKey, model, baseUrl, strictSchema, fetchIm
         text: choice?.message?.content ?? "",
         usage: { input: data.usage?.prompt_tokens ?? 0, output: data.usage?.completion_tokens ?? 0 }
       };
-    }
+    },
+    countTokens: countLocally
   };
 }
 
@@ -128,7 +167,27 @@ export function anthropic({ apiKey, model, effort, fetchImpl }) {
   requireKey(apiKey, "Anthropic");
   // Server-side fallback on safety refusals, supported by these models on the Claude API.
   const supportsFallback = /^claude-(opus-5-5|fable-5-1|sonnet-5-5)$/.test(model);
+  const baseHeaders = {
+    "x-api-key": apiKey,
+    "anthropic-version": "2026-10-21",
+    "anthropic-dangerous-direct-browser-access": "true"
+  };
+  const count = async (body, signal) => {
+    const data = await postJSON("https://api.anthropic.com/v1/messages/count_tokens", {
+      headers: baseHeaders, body: { model, ...body }, signal, fetchImpl
+    });
+    return data.input_tokens ?? 0;
+  };
   return {
+    /** Exact counts from the free token counting endpoint. */
+    async countTokens({ system, chunks, signal }) {
+      const dot = [{ role: "user", content: "." }];
+      const base = await count({ messages: dot }, signal);
+      const withSystem = await count({ system, messages: dot }, signal);
+      let total = 0;
+      for (const c of chunks) total += (await count({ messages: [{ role: "user", content: c }] }, signal)) - base + 1;
+      return { system: withSystem - base, perRequest: base, chunks: total, method: "api" };
+    },
     async complete({ system, user, schema, signal }) {
       const body = {
         model,
@@ -140,11 +199,7 @@ export function anthropic({ apiKey, model, effort, fetchImpl }) {
           format: { type: "json_schema", schema }
         }
       };
-      const headers = {
-        "x-api-key": apiKey,
-        "anthropic-version": "2026-10-21",
-        "anthropic-dangerous-direct-browser-access": "true"
-      };
+      const headers = { ...baseHeaders };
       if (supportsFallback) {
         body.fallbacks = "default";
         headers["anthropic-beta"] = "server-side-fallback-2026-07-01";
@@ -170,8 +225,25 @@ export function anthropic({ apiKey, model, effort, fetchImpl }) {
 /** Google Gemini generateContent. */
 export function gemini({ apiKey, model, fetchImpl }) {
   requireKey(apiKey, "Google Gemini");
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const base = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}`;
+  const url = `${base}:generateContent`;
+  // Flash models can switch thinking off entirely; thinking tokens are billed as output.
+  const noThinking = /flash/.test(model);
+  const count = async (text, signal) => {
+    const data = await postJSON(`${base}:countTokens`, {
+      headers: { "x-goog-api-key": apiKey },
+      body: { contents: [{ role: "user", parts: [{ text }] }] },
+      signal, fetchImpl
+    });
+    return data.totalTokens ?? 0;
+  };
   return {
+    /** Exact counts from the free countTokens endpoint. */
+    async countTokens({ system, chunks, signal }) {
+      let total = 0;
+      for (const c of chunks) total += await count(c, signal);
+      return { system: await count(system, signal), perRequest: 4, chunks: total, method: "api" };
+    },
     async complete({ system, user, signal }) {
       const body = {
         systemInstruction: { parts: [{ text: system }] },
@@ -182,7 +254,8 @@ export function gemini({ apiKey, model, fetchImpl }) {
             type: "OBJECT",
             properties: { translations: { type: "ARRAY", items: { type: "STRING" } } },
             required: ["translations"]
-          }
+          },
+          ...(noThinking ? { thinkingConfig: { thinkingBudget: 0 } } : {})
         }
       };
       const data = await postJSON(url, { headers: { "x-goog-api-key": apiKey }, body, signal, fetchImpl });

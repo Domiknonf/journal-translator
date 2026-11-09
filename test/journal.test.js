@@ -94,3 +94,14 @@ test("translate in place, fix anchors, then restore", async () => {
   assert.equal(p2.text.content, ORIGINAL_P2);
   assert.equal(p2.name, "The Cellar");
 });
+
+test("countEntries counts tokens without generating", async () => {
+  const { countEntries } = await import("../scripts/journal.js");
+  const e = new FakeEntry("E333333333333333", "Chapter 3", [{ id: "P333333333333333", name: "The Tower", type: "text", sort: 0, text: { content: ORIGINAL_P1 } }]);
+  const before = requests;
+  const c = await countEntries([e]);
+  assert.equal(requests, before, "no generation request");
+  assert.equal(c.method, "tokenizer");
+  assert.equal(c.segments, 4); // entry name, page name, heading, paragraph
+  assert.ok(c.inputTokens > c.systemTokens);
+});

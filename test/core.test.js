@@ -211,3 +211,53 @@ test("openai and gemini providers parse responses", async () => {
   assert.equal((await g.complete({ system: "s", user: "u" })).text, "{}");
   assert.match(cap.url, /models\/gemini-x:generateContent$/);
 });
+
+test("countRequests counts with the local tokenizer and prices the result", async () => {
+  const { countRequests, priceOf, batchPayload } = await import("../scripts/core/translator.js");
+  const { localCount } = await import("../scripts/providers/index.js");
+  const p = openAICompatible({ apiKey: "k", model: "gpt-5-mini", baseUrl: "https://api.openai.com/v1", strictSchema: true });
+  const items = [
+    { html: "A crumbling stone tower rises above the trees.", context: "Ch1" },
+    { html: "Two goblins guard the door.", context: "Ch1" },
+    { html: "The tower is haunted.", context: "Ch2" }
+  ];
+  const c = await countRequests(items, { provider: p, prompt: {} });
+  assert.equal(c.method, "tokenizer");
+  assert.equal(c.requests, 2);
+  const payloadOnly = (await localCount(batchPayload("Ch1", items.slice(0, 2)))) + (await localCount(batchPayload("Ch2", items.slice(2))));
+  // Payloads are joined with a newline for counting, which may shift a token or two.
+  assert.ok(Math.abs(c.payloadTokens - payloadOnly) <= 2, `${c.payloadTokens} vs ${payloadOnly}`);
+  assert.ok(c.systemTokens > 300);
+  assert.equal(c.inputTokens, 2 * (c.systemTokens + 8) + c.payloadTokens);
+  assert.ok(c.outputTokens.low < c.outputTokens.high);
+  assert.equal(priceOf(1e6, 1e6, { input: 1, output: 2 }), 3);
+  assert.equal(priceOf(1, 1, null), null);
+});
+
+test("anthropic countTokens uses the counting endpoint", async () => {
+  const seen = [];
+  const fetchImpl = async (url, init) => {
+    const body = JSON.parse(init.body);
+    seen.push(url);
+    const n = (body.system ? 100 : 0) + (body.messages[0].content === "." ? 8 : 50);
+    return { ok: true, json: async () => ({ input_tokens: n }), headers: new Map() };
+  };
+  const p = anthropic({ apiKey: "k", model: "claude-haiku-5-5", fetchImpl });
+  const r = await p.countTokens({ system: "sys", chunks: ["a", "b"] });
+  assert.deepEqual(r, { system: 100, perRequest: 8, chunks: 2 * (50 - 8 + 1), method: "api" });
+  assert.ok(seen.every((u) => u === "https://api.anthropic.com/v1/messages/count_tokens"));
+});
+
+test("reasoning and thinking are kept low for cost", async () => {
+  const cap = {};
+  const ok = { choices: [{ message: { content: "{}" }, finish_reason: "stop" }] };
+  await openAICompatible({ apiKey: "k", model: "gpt-5-mini", baseUrl: "https://x/v1", strictSchema: true, fetchImpl: fakeFetch(ok, cap) })
+    .complete({ system: "s", user: "u", schema: {} });
+  assert.equal(cap.body.reasoning_effort, "low");
+  await openAICompatible({ apiKey: "k", model: "gpt-4.1-mini", baseUrl: "https://x/v1", strictSchema: true, fetchImpl: fakeFetch(ok, cap) })
+    .complete({ system: "s", user: "u", schema: {} });
+  assert.ok(!("reasoning_effort" in cap.body));
+  await gemini({ apiKey: "k", model: "gemini-2.5-flash", fetchImpl: fakeFetch({ candidates: [{ content: { parts: [{ text: "{}" }] } }] }, cap) })
+    .complete({ system: "s", user: "u" });
+  assert.equal(cap.body.generationConfig.thinkingConfig.thinkingBudget, 0);
+});

@@ -23,9 +23,8 @@
     "Cancel": "Cancel",
     "Restore": "Restore original",
     "RestoreConfirm": "Restore the original text of {count} journal(s)? The translation will be lost.",
-    "EstimateButton": "Estimate cost",
+    "EstimateButton": "Calculate cost",
     "Start": "Translate",
-    "Estimate": "{segments} text segments in about {requests} requests. Estimated ~{input} input and ~{output} output tokens. Multiply by your model's price per 1M tokens.",
     "Progress": "{done}/{total} segments, {failed} failed · tokens: {input} in / {output} out",
     "Usage": "Usage: {input} input tokens, {output} output tokens.",
     "ContextTranslate": "Translate…",
@@ -43,15 +42,61 @@
     },
     "Settings": {
       "Open": "Settings",
-      "Provider": { "Name": "AI provider", "Hint": "Which service performs the translation." },
-      "ApiKey": { "Name": "API key: {provider}", "Hint": "Stored only in this browser (client setting) and sent directly to the provider." },
-      "Model": { "Name": "Model: {provider}", "Hint": "Model ID as documented by the provider." },
-      "BaseUrl": { "Name": "Base URL (OpenAI-compatible)", "Hint": "e.g. https://openrouter.ai/api/v1, https://api.mistral.ai/v1 or http://localhost:11434/v1 (Ollama)." },
-      "Effort": { "Name": "Claude: effort", "Hint": "How much Claude thinks. \"low\" is usually enough for translation and is cheaper and faster." },
-      "SourceLanguage": { "Name": "Source language" },
-      "TargetLanguage": { "Name": "Target language", "Hint": "Language to translate into (best given in English, e.g. German)." },
-      "MaxChars": { "Name": "Characters per request", "Hint": "Larger requests are cheaper (less repeated prompt), smaller ones more robust." },
-      "Concurrency": { "Name": "Parallel requests", "Hint": "Lower this if you hit rate limits." }
-    }
+      "Provider": {
+        "Name": "AI provider",
+        "Hint": "Which service performs the translation."
+      },
+      "ApiKey": {
+        "Name": "API key: {provider}",
+        "Hint": "Stored only in this browser (client setting) and sent directly to the provider."
+      },
+      "Model": {
+        "Name": "Model: {provider}",
+        "Hint": "Model ID as documented by the provider."
+      },
+      "BaseUrl": {
+        "Name": "Base URL (OpenAI-compatible)",
+        "Hint": "e.g. https://openrouter.ai/api/v1, https://api.mistral.ai/v1 or http://localhost:11434/v1 (Ollama)."
+      },
+      "Effort": {
+        "Name": "Claude: effort",
+        "Hint": "How much Claude thinks. \"low\" is usually enough for translation and is cheaper and faster."
+      },
+      "SourceLanguage": {
+        "Name": "Source language"
+      },
+      "TargetLanguage": {
+        "Name": "Target language",
+        "Hint": "Language to translate into (best given in English, e.g. German)."
+      },
+      "MaxChars": {
+        "Name": "Characters per request",
+        "Hint": "Larger requests are cheaper (less repeated prompt), smaller ones more robust."
+      },
+      "Concurrency": {
+        "Name": "Parallel requests",
+        "Hint": "Lower this if you hit rate limits."
+      },
+      "PriceInput": {
+        "Name": "Input price (USD per 1M tokens)",
+        "Hint": "0 = use the built-in price list for known models. Only used for cost estimates."
+      },
+      "PriceOutput": {
+        "Name": "Output price (USD per 1M tokens)"
+      }
+    },
+    "Counting": "Counting tokens with the provider's tokenizer…",
+    "Count": {
+      "Exact": "Counted exactly with the provider's (free) token counting for {model}.",
+      "Tokenizer": "Counted with the OpenAI tokenizer (o200k) for {model}. A good approximation for other providers.",
+      "Input": "{segments} text segments in {requests} requests: <strong>{input} input tokens</strong> (including {system} tokens of instructions + glossary per request).",
+      "Output": "Estimated output: <strong>{low} – {high} tokens</strong> (German is a bit longer than English).",
+      "Cost": "Estimated cost: {low} – {high}",
+      "PriceList": "Prices from the built-in list: ${input} / ${output} per 1M tokens (input/output). Please verify with the provider; can be overridden in the settings.",
+      "PriceSettings": "Prices from the settings: ${input} / ${output} per 1M tokens (input/output).",
+      "NoPrice": "No price known for this model. Enter it in the settings to see costs.",
+      "Thinking": "Models with thinking (Claude, GPT-5, Gemini Pro) produce extra thinking tokens billed as output. Tip: translate one chapter first to see the real cost."
+    },
+    "ActualCost": "Actual cost: {cost}."
   }
 }

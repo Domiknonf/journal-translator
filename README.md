@@ -12,7 +12,7 @@
 - **Original wird gesichert:** Beim direkten Übersetzen wird der Originaltext im Journal gespeichert. „Original wiederherstellen“ (Kontextmenü oder Dialog) holt ihn exakt zurück.
 - **Fortsetzbar:** Jede Seite wird gespeichert, sobald sie fertig ist. Abbrechen und später neu starten setzt dort fort.
 - **Glossar:** Ein deutsches D&D-Grundglossar (Rettungswurf, Rüstungsklasse, Zustände, Fertigkeiten …) ist vorbelegt und im Dialog editierbar. Eigene Begriffe (z. B. Ortsnamen) einfach ergänzen.
-- **Kostenschätzung** vor dem Start, Token-Verbrauch während des Laufs.
+- **Kosten vorab berechnen:** Die Eingabe-Token werden vor dem Start mit dem Tokenizer des Anbieters gezählt, ohne etwas zu generieren (Claude und Gemini über deren kostenlose Zähl-API, OpenAI mit dem o200k-Tokenizer direkt im Browser). Die Ausgabe wird hochgerechnet, dazu kommt eine Kostenspanne in USD. Nach dem Lauf werden die tatsächlichen Kosten angezeigt.
 
 ## Installation
 
@@ -39,10 +39,15 @@ https://github.com/Domiknonf/journal-translator/releases/latest/download/module.
 
 ## Kosten
 
-Ein großes Abenteuer (~250 Seiten) sind grob 0,5–1 Mio. Eingabe- und ähnlich viele Ausgabe-Token. Rechne mit den aktuellen Preisen deines Modells (meist pro 1 Mio. Token angegeben). Mit einem kleinen, günstigen Modell kostet das ganze Abenteuer typischerweise wenige Euro, mit einem Spitzenmodell eher zweistellig. Die Schätzung im Dialog zeigt die erwarteten Token.
+Klicke im Dialog auf **Kosten berechnen**:
+
+- **Eingabe-Token** werden exakt gezählt (Prompt + Glossar + alle Textabschnitte, so wie sie gesendet würden).
+- **Ausgabe-Token** lassen sich vorab nicht zählen; sie werden mit Faktor 1,2–1,6 hochgerechnet (Deutsch ist länger als Englisch).
+- **Kosten** = Token × Preis. Für gängige Modelle ist eine Preisliste eingebaut; in den Einstellungen kannst du eigene Preise eintragen (USD pro 1 Mio. Token).
+- Modelle mit Denkmodus erzeugen zusätzliche, als Ausgabe berechnete Denk-Token. Das Modul hält diese niedrig (OpenAI `reasoning_effort: low`, Gemini Flash ohne Denken, Claude Effort `low`). Für eine verlässliche Zahl: erst ein Kapitel übersetzen, die tatsächlichen Kosten werden danach angezeigt.
 
 Tipps:
-- *Zeichen pro Anfrage* höher stellen spart Kosten (der Prompt wird seltener wiederholt).
+- *Zeichen pro Anfrage* (Standard 12 000) höher stellen spart Kosten, da der Prompt (~800 Token mit Glossar) seltener wiederholt wird.
 - Erst ein einzelnes Kapitel übersetzen und die Qualität prüfen.
 - Claude: *Effort* auf `low` (Standard) reicht für Übersetzungen.
 

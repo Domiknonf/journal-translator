@@ -16,7 +16,7 @@
 import { MODULE_ID, getSetting, createProvider, providerConfig } from "./settings.js";
 import { protectElement, restore, escapeText, toPlainText } from "./core/protect.js";
 import { collectSegments, unwrapRuns, headings } from "./core/segment.js";
-import { translateItems, estimate } from "./core/translator.js";
+import { translateItems, countRequests } from "./core/translator.js";
 import { rewriteLinks, defaultSlugify } from "./core/links.js";
 
 const F = {
@@ -203,9 +203,18 @@ function promptOptions() {
   };
 }
 
-export function estimateEntries(entries, { force = false } = {}) {
+/**
+ * Count the exact input tokens a run would send (provider tokenizer or counting API) and
+ * estimate the output tokens. Nothing is generated, so this costs nothing.
+ */
+export async function countEntries(entries, { force = false, signal } = {}) {
   const { items } = prepareWork(entries, { force });
-  return estimate(items, { maxChars: getSetting("maxChars"), prompt: promptOptions() });
+  return countRequests(items, {
+    provider: createProvider(),
+    maxChars: getSetting("maxChars"),
+    prompt: promptOptions(),
+    signal
+  });
 }
 
 /**
