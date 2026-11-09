@@ -1,0 +1,57 @@
+{
+  "JOURNAL_TRANSLATOR": {
+    "Title": "Journal Translator",
+    "Provider": "Provider",
+    "Selected": "{count} journals selected",
+    "SelectAll": "All",
+    "SelectNone": "None",
+    "PagesTranslated": "Translated pages",
+    "HasBackup": "Original saved, can be restored",
+    "Options": "Options",
+    "Mode": {
+      "InPlace": "Translate in place (recommended)",
+      "InPlaceHint": "The journals themselves are translated. The original is saved and can be restored at any time. Map pins and all references keep working.",
+      "Copy": "Create translated copies",
+      "CopyHint": "The journals are copied into a new folder and translated there. Links between the copies are redirected, but map pins still point to the originals."
+    },
+    "Force": "Re-translate pages that are already translated",
+    "ForceHint": "Finished pages are normally skipped, so an interrupted run can simply be resumed.",
+    "GlossaryTitle": "Glossary & instructions",
+    "GlossaryHint": "One term per line: source = translation. Sent with every request to keep terminology consistent.",
+    "Instructions": "Additional instructions for the model",
+    "ResetGlossary": "Reset to default",
+    "Cancel": "Cancel",
+    "Restore": "Restore original",
+    "RestoreConfirm": "Restore the original text of {count} journal(s)? The translation will be lost.",
+    "EstimateButton": "Estimate cost",
+    "Start": "Translate",
+    "Estimate": "{segments} text segments in about {requests} requests. Estimated ~{input} input and ~{output} output tokens. Multiply by your model's price per 1M tokens.",
+    "Progress": "{done}/{total} segments, {failed} failed · tokens: {input} in / {output} out",
+    "Usage": "Usage: {input} input tokens, {output} output tokens.",
+    "ContextTranslate": "Translate…",
+    "ContextTranslateFolder": "Translate folder…",
+    "CopyFolder": "Translation",
+    "Notify": {
+      "NoKey": "No API key configured for the selected provider. Please set one in the module settings.",
+      "NoSelection": "Please select at least one journal.",
+      "NoBackup": "None of the selected journals has a saved original.",
+      "Done": "Translation finished: {done} segments, {failed} kept in the original language ({minutes} min).",
+      "Cancelled": "Translation cancelled. Finished pages are saved; starting again resumes.",
+      "Error": "Translation failed: {message}",
+      "Restored": "{count} journal(s) restored.",
+      "GMOnly": "Only the GM can translate journals."
+    },
+    "Settings": {
+      "Open": "Settings",
+      "Provider": { "Name": "AI provider", "Hint": "Which service performs the translation." },
+      "ApiKey": { "Name": "API key: {provider}", "Hint": "Stored only in this browser (client setting) and sent directly to the provider." },
+      "Model": { "Name": "Model: {provider}", "Hint": "Model ID as documented by the provider." },
+      "BaseUrl": { "Name": "Base URL (OpenAI-compatible)", "Hint": "e.g. https://openrouter.ai/api/v1, https://api.mistral.ai/v1 or http://localhost:11434/v1 (Ollama)." },
+      "Effort": { "Name": "Claude: effort", "Hint": "How much Claude thinks. \"low\" is usually enough for translation and is cheaper and faster." },
+      "SourceLanguage": { "Name": "Source language" },
+      "TargetLanguage": { "Name": "Target language", "Hint": "Language to translate into (best given in English, e.g. German)." },
+      "MaxChars": { "Name": "Characters per request", "Hint": "Larger requests are cheaper (less repeated prompt), smaller ones more robust." },
+      "Concurrency": { "Name": "Parallel requests", "Hint": "Lower this if you hit rate limits." }
+    }
+  }
+}

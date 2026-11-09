@@ -1,0 +1,57 @@
+{
+  "JOURNAL_TRANSLATOR": {
+    "Title": "Journal-Übersetzer",
+    "Provider": "Anbieter",
+    "Selected": "{count} Journale ausgewählt",
+    "SelectAll": "Alle",
+    "SelectNone": "Keine",
+    "PagesTranslated": "Übersetzte Seiten",
+    "HasBackup": "Original gesichert, kann wiederhergestellt werden",
+    "Options": "Optionen",
+    "Mode": {
+      "InPlace": "Direkt übersetzen (empfohlen)",
+      "InPlaceHint": "Die Journale selbst werden übersetzt. Das Original wird gesichert und kann jederzeit wiederhergestellt werden. Karten-Pins und alle Verweise funktionieren weiter.",
+      "Copy": "Übersetzte Kopie anlegen",
+      "CopyHint": "Die Journale werden in einen neuen Ordner kopiert und dort übersetzt. Verweise zwischen den Kopien werden umgebogen, Karten-Pins zeigen aber weiterhin auf die Originale."
+    },
+    "Force": "Bereits übersetzte Seiten neu übersetzen",
+    "ForceHint": "Normalerweise werden fertige Seiten übersprungen, so kann ein abgebrochener Lauf einfach fortgesetzt werden.",
+    "GlossaryTitle": "Glossar & Anweisungen",
+    "GlossaryHint": "Eine Zeile pro Begriff: Original = Übersetzung. Wird bei jeder Anfrage mitgeschickt und sorgt für einheitliche Begriffe.",
+    "Instructions": "Zusätzliche Anweisungen an das Modell",
+    "ResetGlossary": "Standard wiederherstellen",
+    "Cancel": "Abbrechen",
+    "Restore": "Original wiederherstellen",
+    "RestoreConfirm": "Original-Text von {count} Journal(en) wiederherstellen? Die Übersetzung geht dabei verloren.",
+    "EstimateButton": "Kosten schätzen",
+    "Start": "Übersetzen",
+    "Estimate": "{segments} Textabschnitte in ca. {requests} Anfragen. Geschätzt ~{input} Eingabe- und ~{output} Ausgabe-Token. Multipliziere mit den Preisen deines Modells (pro 1 Mio. Token).",
+    "Progress": "{done}/{total} Abschnitte, {failed} fehlgeschlagen · Token: {input} ein / {output} aus",
+    "Usage": "Verbrauch: {input} Eingabe-Token, {output} Ausgabe-Token.",
+    "ContextTranslate": "Übersetzen …",
+    "ContextTranslateFolder": "Ordner übersetzen …",
+    "CopyFolder": "Übersetzung",
+    "Notify": {
+      "NoKey": "Für den gewählten Anbieter ist kein API-Key hinterlegt. Bitte in den Moduleinstellungen eintragen.",
+      "NoSelection": "Bitte mindestens ein Journal auswählen.",
+      "NoBackup": "Keines der ausgewählten Journale hat ein gesichertes Original.",
+      "Done": "Übersetzung fertig: {done} Abschnitte, davon {failed} im Original belassen ({minutes} Min.).",
+      "Cancelled": "Übersetzung abgebrochen. Fertige Seiten sind gespeichert, ein neuer Start setzt fort.",
+      "Error": "Übersetzung fehlgeschlagen: {message}",
+      "Restored": "{count} Journal(e) wiederhergestellt.",
+      "GMOnly": "Nur die Spielleitung kann Journale übersetzen."
+    },
+    "Settings": {
+      "Open": "Einstellungen",
+      "Provider": { "Name": "KI-Anbieter", "Hint": "Welcher Dienst die Übersetzung übernimmt." },
+      "ApiKey": { "Name": "API-Key: {provider}", "Hint": "Wird nur in diesem Browser gespeichert (Client-Einstellung) und direkt an den Anbieter gesendet." },
+      "Model": { "Name": "Modell: {provider}", "Hint": "Modell-ID laut Dokumentation des Anbieters." },
+      "BaseUrl": { "Name": "Basis-URL (OpenAI-kompatibel)", "Hint": "z. B. https://openrouter.ai/api/v1, https://api.mistral.ai/v1 oder http://localhost:11434/v1 (Ollama)." },
+      "Effort": { "Name": "Claude: Effort", "Hint": "Wie gründlich Claude nachdenkt. Für Übersetzungen reicht meist „low“, das ist günstiger und schneller." },
+      "SourceLanguage": { "Name": "Ausgangssprache" },
+      "TargetLanguage": { "Name": "Zielsprache", "Hint": "Sprache, in die übersetzt wird (am besten auf Englisch angeben, z. B. German)." },
+      "MaxChars": { "Name": "Zeichen pro Anfrage", "Hint": "Größere Anfragen sind günstiger (weniger wiederholter Prompt), kleinere robuster." },
+      "Concurrency": { "Name": "Parallele Anfragen", "Hint": "Bei Rate-Limit-Fehlern verringern." }
+    }
+  }
+}

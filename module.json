@@ -1,0 +1,19 @@
+{
+  "id": "journal-translator",
+  "title": "Journal Translator",
+  "description": "Translates journal entries with AI (OpenAI, Claude, Gemini or any OpenAI-compatible API) while keeping links, cross-references, images, rolls and formatting intact.",
+  "version": "0.1.0",
+  "authors": [{ "name": "Domiknonf" }],
+  "compatibility": { "minimum": "13", "verified": "14" },
+  "esmodules": ["scripts/main.js"],
+  "styles": ["styles/journal-translator.css"],
+  "languages": [
+    { "lang": "de", "name": "Deutsch", "path": "lang/de.json" },
+    { "lang": "en", "name": "English", "path": "lang/en.json" }
+  ],
+  "url": "https://github.com/Domiknonf/journal-translator",
+  "manifest": "https://github.com/Domiknonf/journal-translator/releases/latest/download/module.json",
+  "download": "https://github.com/Domiknonf/journal-translator/releases/latest/download/module.zip",
+  "bugs": "https://github.com/Domiknonf/journal-translator/issues",
+  "license": "LICENSE"
+}

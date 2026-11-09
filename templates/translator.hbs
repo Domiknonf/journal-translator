@@ -1,0 +1,65 @@
+<section class="jt-body">
+  <div class="jt-provider">
+    <span><strong>{{localize "JOURNAL_TRANSLATOR.Provider"}}:</strong> {{provider}} · <code>{{model}}</code> · {{source}} → {{target}}</span>
+    <button type="button" data-action="openSettings"><i class="fa-solid fa-gear"></i> {{localize "JOURNAL_TRANSLATOR.Settings.Open"}}</button>
+  </div>
+  {{#unless hasKey}}<p class="jt-error">{{localize "JOURNAL_TRANSLATOR.Notify.NoKey"}}</p>{{/unless}}
+
+  <div class="jt-toolbar">
+    <span class="jt-count">{{localize "JOURNAL_TRANSLATOR.Selected" count=selectedCount}}</span>
+    <button type="button" data-action="selectAll">{{localize "JOURNAL_TRANSLATOR.SelectAll"}}</button>
+    <button type="button" data-action="selectNone">{{localize "JOURNAL_TRANSLATOR.SelectNone"}}</button>
+  </div>
+
+  <ol class="jt-tree">
+    {{#each rows}}
+      {{#if (eq type "folder")}}
+        <li class="jt-folder" style="--depth: {{depth}}">
+          <label><input type="checkbox" data-folder="{{id}}"> <i class="fa-solid fa-folder"></i> {{name}}</label>
+        </li>
+      {{else}}
+        <li class="jt-entry" style="--depth: {{depth}}">
+          <label>
+            <input type="checkbox" data-entry="{{id}}" {{checked checked}}>
+            <i class="fa-solid fa-book-open"></i> {{name}}
+          </label>
+          <span class="jt-meta {{#if complete}}jt-complete{{/if}}" data-tooltip="JOURNAL_TRANSLATOR.PagesTranslated">
+            {{#if backup}}<i class="fa-solid fa-clock-rotate-left" data-tooltip="JOURNAL_TRANSLATOR.HasBackup"></i>{{/if}}
+            {{progress}}
+          </span>
+        </li>
+      {{/if}}
+    {{/each}}
+  </ol>
+
+  <fieldset class="jt-options">
+    <legend>{{localize "JOURNAL_TRANSLATOR.Options"}}</legend>
+    <label><input type="radio" name="mode" value="inplace" {{checked (eq mode "inplace")}}> {{localize "JOURNAL_TRANSLATOR.Mode.InPlace"}}</label>
+    <p class="hint">{{localize "JOURNAL_TRANSLATOR.Mode.InPlaceHint"}}</p>
+    <label><input type="radio" name="mode" value="copy" {{checked (eq mode "copy")}}> {{localize "JOURNAL_TRANSLATOR.Mode.Copy"}}</label>
+    <p class="hint">{{localize "JOURNAL_TRANSLATOR.Mode.CopyHint"}}</p>
+    <label><input type="checkbox" name="force" {{checked force}}> {{localize "JOURNAL_TRANSLATOR.Force"}}</label>
+    <p class="hint">{{localize "JOURNAL_TRANSLATOR.ForceHint"}}</p>
+  </fieldset>
+
+  <details class="jt-texts">
+    <summary>{{localize "JOURNAL_TRANSLATOR.GlossaryTitle"}}</summary>
+    <p class="hint">{{localize "JOURNAL_TRANSLATOR.GlossaryHint"}}</p>
+    <textarea name="glossary" rows="8">{{glossary}}</textarea>
+    <label>{{localize "JOURNAL_TRANSLATOR.Instructions"}}</label>
+    <textarea name="instructions" rows="3">{{instructions}}</textarea>
+    <button type="button" data-action="resetGlossary">{{localize "JOURNAL_TRANSLATOR.ResetGlossary"}}</button>
+  </details>
+
+  <div class="jt-status">{{{status}}}</div>
+
+  <footer class="jt-footer">
+    {{#if running}}
+      <button type="button" data-action="cancel"><i class="fa-solid fa-stop"></i> {{localize "JOURNAL_TRANSLATOR.Cancel"}}</button>
+    {{else}}
+      <button type="button" data-action="restore"><i class="fa-solid fa-clock-rotate-left"></i> {{localize "JOURNAL_TRANSLATOR.Restore"}}</button>
+      <button type="button" data-action="estimate"><i class="fa-solid fa-calculator"></i> {{localize "JOURNAL_TRANSLATOR.EstimateButton"}}</button>
+      <button type="button" data-action="start" class="jt-primary"><i class="fa-solid fa-language"></i> {{localize "JOURNAL_TRANSLATOR.Start"}}</button>
+    {{/if}}
+  </footer>
+</section>
