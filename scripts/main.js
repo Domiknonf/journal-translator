@@ -1,6 +1,6 @@
 import { MODULE_ID, registerSettings, maskKeyInputs } from "./settings.js";
-import { TranslatorApp, restoreWithConfirm } from "./app.js";
-import { hasBackup } from "./journal.js";
+import { TranslatorApp, restoreWithConfirm, restoreTranslationOf } from "./app.js";
+import { hasBackup, hasTranslation } from "./journal.js";
 
 let app = null;
 
@@ -65,6 +65,12 @@ function addEntryOptions(options) {
       icon: '<i class="fa-solid fa-clock-rotate-left"></i>',
       condition: (li) => { const e = entryOf(li); return !!e && hasBackup(e); },
       callback: (li) => restoreWithConfirm(entryOf(li))
+    }),
+    option({
+      name: "JOURNAL_TRANSLATOR.RestoreTranslation",
+      icon: '<i class="fa-solid fa-language"></i>',
+      condition: (li) => { const e = entryOf(li); return !!e && hasTranslation(e); },
+      callback: (li) => restoreTranslationOf(entryOf(li))
     })
   );
 }

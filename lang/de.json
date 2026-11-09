@@ -22,7 +22,7 @@
     "ResetGlossary": "Standard wiederherstellen",
     "Cancel": "Abbrechen",
     "Restore": "Original wiederherstellen",
-    "RestoreConfirm": "Original-Text von {count} Journal(en) wiederherstellen? Die Übersetzung geht dabei verloren.",
+    "RestoreConfirm": "Original-Text von {count} Journal(en) wiederherstellen? Die Übersetzung bleibt gespeichert und kann jederzeit mit „Übersetzung wiederherstellen“ zurückgeholt werden.",
     "EstimateButton": "Kosten berechnen",
     "Start": "Übersetzen",
     "Progress": "{done}/{total} Abschnitte, {failed} fehlgeschlagen · Token: {input} ein / {output} aus",
@@ -38,7 +38,9 @@
       "Cancelled": "Übersetzung abgebrochen. Fertige Seiten sind gespeichert, ein neuer Start setzt fort.",
       "Error": "Übersetzung fehlgeschlagen: {message}",
       "Restored": "{count} Journal(e) wiederhergestellt.",
-      "GMOnly": "Nur die Spielleitung kann Journale übersetzen."
+      "GMOnly": "Nur die Spielleitung kann Journale übersetzen.",
+      "NoTranslation": "Keines der ausgewählten Journale hat eine gespeicherte Übersetzung.",
+      "TranslationRestored": "Übersetzung von {count} Journal(en) wiederhergestellt."
     },
     "Settings": {
       "Open": "Einstellungen",
@@ -97,6 +99,8 @@
       "NoPrice": "Für dieses Modell ist kein Preis bekannt. Trage ihn in den Einstellungen ein, um Kosten zu sehen.",
       "Thinking": "Modelle mit Denkmodus (Claude, GPT-5, Gemini Pro) erzeugen zusätzliche Denk-Token, die als Ausgabe zählen. Tipp: Übersetze zuerst ein Kapitel; danach siehst du die echten Kosten."
     },
-    "ActualCost": "Tatsächliche Kosten: {cost}."
+    "ActualCost": "Tatsächliche Kosten: {cost}.",
+    "RestoreTranslation": "Übersetzung wiederherstellen",
+    "HasTranslation": "Übersetzung gespeichert, kann ohne Kosten wiederhergestellt werden"
   }
 }

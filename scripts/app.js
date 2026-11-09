@@ -1,5 +1,5 @@
 import { MODULE_ID, getSetting, setSetting, providerConfig, DEFAULT_GLOSSARY, DEFAULT_INSTRUCTIONS } from "./settings.js";
-import { translateEntries, countEntries, restoreEntry, hasBackup } from "./journal.js";
+import { translateEntries, countEntries, restoreEntry, restoreTranslation, hasBackup, hasTranslation } from "./journal.js";
 import { priceOf } from "./core/translator.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -17,6 +17,7 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       start: TranslatorApp.#onStart,
       cancel: TranslatorApp.#onCancel,
       restore: TranslatorApp.#onRestore,
+      restoreTranslation: TranslatorApp.#onRestoreTranslation,
       selectAll: TranslatorApp.#onSelectAll,
       selectNone: TranslatorApp.#onSelectNone,
       resetGlossary: TranslatorApp.#onResetGlossary,
@@ -57,7 +58,7 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       const done = pages.filter((p) => p.getFlag(MODULE_ID, "translated")).length;
       rows.push({
         type: "entry", id: e.id, name: e.name, depth, checked: this.selected.has(e.id),
-        progress: `${done}/${pages.length}`, complete: pages.length > 0 && done === pages.length, backup: hasBackup(e)
+        progress: `${done}/${pages.length}`, complete: pages.length > 0 && done === pages.length, backup: hasBackup(e), translation: hasTranslation(e)
       });
     };
     const folderRow = (f, depth) => {
@@ -234,6 +235,15 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
     this.render();
   }
 
+  static async #onRestoreTranslation() {
+    if (!this.#requireSelection()) return;
+    const entries = this.selectedEntries.filter(hasTranslation);
+    if (!entries.length) return ui.notifications.warn(t("Notify.NoTranslation"));
+    for (const e of entries) await restoreTranslation(e);
+    ui.notifications.info(t("Notify.TranslationRestored", { count: entries.length }));
+    this.render();
+  }
+
   static #onSelectAll() {
     for (const e of game.journal) this.selected.add(e.id);
     this.render();
@@ -264,4 +274,8 @@ export async function restoreWithConfirm(entry) {
     content: `<p>${t("RestoreConfirm", { count: 1 })}</p>`
   });
   if (ok && (await restoreEntry(entry))) ui.notifications.info(t("Notify.Restored", { count: 1 }));
+}
+
+export async function restoreTranslationOf(entry) {
+  if (await restoreTranslation(entry)) ui.notifications.info(t("Notify.TranslationRestored", { count: 1 }));
 }

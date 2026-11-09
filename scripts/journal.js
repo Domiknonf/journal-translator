@@ -23,7 +23,8 @@ const F = {
   original: "original",          // JournalEntry: { name, pages: { [id]: { name, content, caption } } }
   nameDone: "translatedName",    // JournalEntry: true
   done: "translated",            // JournalEntryPage: true
-  anchors: "anchors"             // JournalEntryPage: [[oldSlug, newSlug], ...]
+  anchors: "anchors",            // JournalEntryPage: [[oldSlug, newSlug], ...]
+  translation: "translation"     // JournalEntry: translation saved by "restore original" (same shape)
 };
 
 function slugifyHeading(el) {
@@ -139,11 +140,10 @@ async function finalizePage(work) {
 async function ensureBackups(entries) {
   for (const entry of entries) {
     if (hasBackup(entry)) continue;
-    const pages = {};
-    for (const p of entry.pages) {
-      pages[p.id] = { name: p.name, content: p.text?.content ?? null, caption: p.image?.caption ?? null };
-    }
-    await entry.setFlag(MODULE_ID, F.original, { name: entry.name, pages });
+    const { name, pages } = snapshot(entry);
+    await entry.setFlag(MODULE_ID, F.original, { name, pages });
+    // A translation stored by "restore original" is superseded by the new run.
+    if (hasTranslation(entry)) await entry.unsetFlag(MODULE_ID, F.translation);
   }
 }
 
@@ -256,27 +256,70 @@ export async function translateEntries(entries, { mode = "inplace", force = fals
   return { ...result, entries };
 }
 
-/** Restore the original text of an entry translated in place. */
-export async function restoreEntry(entry) {
-  const backup = entry.getFlag(MODULE_ID, F.original);
-  if (!backup) return false;
+/** Current state of an entry, including the per-page translation status. */
+function snapshot(entry) {
+  const pages = {};
+  for (const p of entry.pages) {
+    pages[p.id] = {
+      name: p.name,
+      content: p.text?.content ?? null,
+      caption: p.image?.caption ?? null,
+      done: !!p.getFlag(MODULE_ID, F.done),
+      anchors: p.getFlag(MODULE_ID, F.anchors) ?? []
+    };
+  }
+  return { name: entry.name, nameDone: !!entry.getFlag(MODULE_ID, F.nameDone), pages };
+}
+
+/** Write a snapshot back. Pages added after the snapshot was taken are left alone. */
+async function applySnapshot(entry, snap) {
   const updates = [];
   for (const page of entry.pages) {
-    const orig = backup.pages?.[page.id];
-    if (!orig) continue;
+    const s = snap.pages?.[page.id];
+    if (!s) continue;
     const u = {
       _id: page.id,
-      name: orig.name,
-      [`flags.${MODULE_ID}.${F.done}`]: false,
-      [`flags.${MODULE_ID}.${F.anchors}`]: []
+      name: s.name,
+      [`flags.${MODULE_ID}.${F.done}`]: !!s.done,
+      [`flags.${MODULE_ID}.${F.anchors}`]: s.anchors ?? []
     };
-    if (orig.content !== null && page.type === "text") u["text.content"] = orig.content;
-    if (orig.caption !== null && page.type === "image") u["image.caption"] = orig.caption;
+    if (s.content !== null && page.type === "text") u["text.content"] = s.content;
+    if (s.caption !== null && page.type === "image") u["image.caption"] = s.caption;
     updates.push(u);
   }
   if (updates.length) await entry.updateEmbeddedDocuments("JournalEntryPage", updates);
-  await entry.update({ name: backup.name, [`flags.${MODULE_ID}.${F.nameDone}`]: false });
+  await entry.update({ name: snap.name, [`flags.${MODULE_ID}.${F.nameDone}`]: !!snap.nameDone });
+}
+
+export function hasTranslation(entry) {
+  return !!entry.getFlag(MODULE_ID, F.translation);
+}
+
+/**
+ * Restore the original text of an entry translated in place. The translation is kept,
+ * so it can be brought back with {@link restoreTranslation} without translating again.
+ */
+export async function restoreEntry(entry) {
+  const backup = entry.getFlag(MODULE_ID, F.original);
+  if (!backup) return false;
+  const translation = snapshot(entry);
+  await applySnapshot(entry, { ...backup, nameDone: false });
+  await entry.setFlag(MODULE_ID, F.translation, translation);
   await entry.unsetFlag(MODULE_ID, F.original);
+  return true;
+}
+
+/**
+ * Bring back the translation saved by {@link restoreEntry}. The current (original) text is
+ * saved as the new backup, so edits made to it in the meantime are not lost.
+ */
+export async function restoreTranslation(entry) {
+  const translation = entry.getFlag(MODULE_ID, F.translation);
+  if (!translation) return false;
+  const original = snapshot(entry);
+  await entry.setFlag(MODULE_ID, F.original, { name: original.name, pages: original.pages });
+  await applySnapshot(entry, translation);
+  await entry.unsetFlag(MODULE_ID, F.translation);
   return true;
 }
 

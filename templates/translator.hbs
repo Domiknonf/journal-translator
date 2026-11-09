@@ -25,6 +25,7 @@
           </label>
           <span class="jt-meta {{#if complete}}jt-complete{{/if}}" data-tooltip="JOURNAL_TRANSLATOR.PagesTranslated">
             {{#if backup}}<i class="fa-solid fa-clock-rotate-left" data-tooltip="JOURNAL_TRANSLATOR.HasBackup"></i>{{/if}}
+            {{#if translation}}<i class="fa-solid fa-language" data-tooltip="JOURNAL_TRANSLATOR.HasTranslation"></i>{{/if}}
             {{progress}}
           </span>
         </li>
@@ -58,6 +59,7 @@
       <button type="button" data-action="cancel"><i class="fa-solid fa-stop"></i> {{localize "JOURNAL_TRANSLATOR.Cancel"}}</button>
     {{else}}
       <button type="button" data-action="restore"><i class="fa-solid fa-clock-rotate-left"></i> {{localize "JOURNAL_TRANSLATOR.Restore"}}</button>
+      <button type="button" data-action="restoreTranslation"><i class="fa-solid fa-language"></i> {{localize "JOURNAL_TRANSLATOR.RestoreTranslation"}}</button>
       <button type="button" data-action="estimate"><i class="fa-solid fa-calculator"></i> {{localize "JOURNAL_TRANSLATOR.EstimateButton"}}</button>
       <button type="button" data-action="start" class="jt-primary"><i class="fa-solid fa-language"></i> {{localize "JOURNAL_TRANSLATOR.Start"}}</button>
     {{/if}}

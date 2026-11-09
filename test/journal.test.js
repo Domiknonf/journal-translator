@@ -59,7 +59,7 @@ class FakeEntry extends FakeDoc {
   }
 }
 
-const { translateEntries, restoreEntry } = await import("../scripts/journal.js");
+const { translateEntries, restoreEntry, restoreTranslation } = await import("../scripts/journal.js");
 
 const E1 = "E111111111111111", E2 = "E222222222222222", P1 = "P111111111111111", P2 = "P222222222222222";
 const ORIGINAL_P1 = `<h2>Area 4: The Cellar</h2><p>Rats live here. <img src="art/cellar.webp"></p>`;
@@ -93,6 +93,43 @@ test("translate in place, fix anchors, then restore", async () => {
   assert.equal(p1.text.content, ORIGINAL_P1);
   assert.equal(p2.text.content, ORIGINAL_P2);
   assert.equal(p2.name, "The Cellar");
+  assert.equal(p1.getFlag("journal-translator", "translated"), false);
+
+  // The translation was kept and comes back without any API request.
+  const translatedP1 = `<h2>Bereich 4: Der Keller</h2><p>Ratten live here. <img src="art/cellar.webp"></p>`;
+  const beforeToggle = requests;
+  for (let i = 0; i < 2; i++) {
+    await restoreTranslation(e1);
+    await restoreTranslation(e2);
+    assert.equal(e1.name, "Kapitel 1");
+    assert.equal(p1.name, "Der Turm");
+    assert.equal(p1.text.content, translatedP1);
+    assert.match(p2.text.content, /#bereich-4-der-keller\]\{Der Keller\}/);
+    assert.equal(p1.getFlag("journal-translator", "translated"), true);
+    assert.deepEqual(p1.getFlag("journal-translator", "anchors"), [["area-4-the-cellar", "bereich-4-der-keller"]]);
+
+    await restoreEntry(e1);
+    await restoreEntry(e2);
+    assert.equal(p1.text.content, ORIGINAL_P1);
+    assert.equal(p2.text.content, ORIGINAL_P2);
+  }
+  assert.equal(requests, beforeToggle);
+  assert.equal(await restoreEntry(e1), false, "nothing to restore while showing the original");
+
+  // Bringing the translation back clears the stored copy.
+  await restoreTranslation(e1);
+  await restoreTranslation(e2);
+  assert.equal(e1.getFlag("journal-translator", "translation"), undefined);
+});
+
+test("backups from v0.1 (without status fields) still restore", async () => {
+  const e = new FakeEntry("E444444444444444", "Kapitel", [{ id: "P444444444444444", name: "Turm", type: "text", sort: 0, text: { content: "<p>Deutsch</p>" } }]);
+  e.flags["journal-translator"] = { original: { name: "Chapter", pages: { P444444444444444: { name: "Tower", content: "<p>English</p>", caption: null } } } };
+  await restoreEntry(e);
+  assert.equal(e.pages.contents[0].text.content, "<p>English</p>");
+  await restoreTranslation(e);
+  assert.equal(e.pages.contents[0].text.content, "<p>Deutsch</p>");
+  assert.equal(e.name, "Kapitel");
 });
 
 test("countEntries counts tokens without generating", async () => {

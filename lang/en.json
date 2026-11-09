@@ -22,7 +22,7 @@
     "ResetGlossary": "Reset to default",
     "Cancel": "Cancel",
     "Restore": "Restore original",
-    "RestoreConfirm": "Restore the original text of {count} journal(s)? The translation will be lost.",
+    "RestoreConfirm": "Restore the original text of {count} journal(s)? The translation is kept and can be brought back at any time with \"Restore translation\".",
     "EstimateButton": "Calculate cost",
     "Start": "Translate",
     "Progress": "{done}/{total} segments, {failed} failed · tokens: {input} in / {output} out",
@@ -38,7 +38,9 @@
       "Cancelled": "Translation cancelled. Finished pages are saved; starting again resumes.",
       "Error": "Translation failed: {message}",
       "Restored": "{count} journal(s) restored.",
-      "GMOnly": "Only the GM can translate journals."
+      "GMOnly": "Only the GM can translate journals.",
+      "NoTranslation": "None of the selected journals has a saved translation.",
+      "TranslationRestored": "Translation of {count} journal(s) restored."
     },
     "Settings": {
       "Open": "Settings",
@@ -97,6 +99,8 @@
       "NoPrice": "No price known for this model. Enter it in the settings to see costs.",
       "Thinking": "Models with thinking (Claude, GPT-5, Gemini Pro) produce extra thinking tokens billed as output. Tip: translate one chapter first to see the real cost."
     },
-    "ActualCost": "Actual cost: {cost}."
+    "ActualCost": "Actual cost: {cost}.",
+    "RestoreTranslation": "Restore translation",
+    "HasTranslation": "Translation saved, can be restored at no cost"
   }
 }
