@@ -1,5 +1,5 @@
 import { MODULE_ID, getSetting, setSetting, providerConfig, DEFAULT_GLOSSARY, DEFAULT_INSTRUCTIONS } from "./settings.js";
-import { translateEntries, countEntries, restoreEntry, restoreTranslation, hasBackup, hasTranslation } from "./journal.js";
+import { translateEntries, countEntries, restoreEntry, restoreTranslation, hasBackup, hasTranslation, isPageDone } from "./journal.js";
 import { priceOf } from "./core/translator.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -55,7 +55,7 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const rows = [];
     const entryRow = (e, depth) => {
       const pages = e.pages.contents;
-      const done = pages.filter((p) => p.getFlag(MODULE_ID, "translated")).length;
+      const done = pages.filter(isPageDone).length;
       rows.push({
         type: "entry", id: e.id, name: e.name, depth, checked: this.selected.has(e.id),
         progress: `${done}/${pages.length}`, complete: pages.length > 0 && done === pages.length, backup: hasBackup(e), translation: hasTranslation(e)

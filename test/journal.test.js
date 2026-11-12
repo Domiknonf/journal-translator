@@ -142,3 +142,33 @@ test("countEntries counts tokens without generating", async () => {
   assert.equal(c.segments, 4); // entry name, page name, heading, paragraph
   assert.ok(c.inputTokens > c.systemTokens);
 });
+
+test("dnd5e Map Location pages get their text translated, also when marked done by an older version", async () => {
+  const P = "P555555555555555";
+  const e = new FakeEntry("E555555555555555", "Locations: Omu", [{
+    id: P, name: "The Tower", type: "map", sort: 0, system: { code: "4A" },
+    text: { content: "<p>See the Tower. A [[/check skill=prc dc=10]] reveals Rats.</p>" }
+  }]);
+  const page = e.pages.contents[0];
+  // State left behind by v0.4 and earlier: title translated, text untouched, marked done.
+  page.name = "Der Turm";
+  page.flags["journal-translator"] = { translated: true, anchors: [] };
+  e.flags["journal-translator"] = { original: { name: "Locations: Omu", pages: { [P]: { name: "The Tower", content: page.text.content, caption: null } } } };
+
+  const { isPageDone } = await import("../scripts/journal.js");
+  assert.equal(isPageDone(page), false, "old done flag on a map page is not trusted");
+
+  const res = await translateEntries([e], { mode: "inplace" });
+  assert.equal(res.failed, 0);
+  assert.equal(page.text.content, "<p>Siehe the Turm. A [[/check skill=prc dc=10]] reveals Ratten.</p>");
+  assert.equal(page.system.code, "4A");
+  assert.equal(isPageDone(page), true);
+
+  // Restore and swap back keep working for map pages.
+  await restoreEntry(e);
+  assert.equal(page.text.content, "<p>See the Tower. A [[/check skill=prc dc=10]] reveals Rats.</p>");
+  assert.equal(isPageDone(page), false);
+  await restoreTranslation(e);
+  assert.match(page.text.content, /Ratten/);
+  assert.equal(isPageDone(page), true);
+});

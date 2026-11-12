@@ -24,8 +24,31 @@ const F = {
   nameDone: "translatedName",    // JournalEntry: true
   done: "translated",            // JournalEntryPage: true
   anchors: "anchors",            // JournalEntryPage: [[oldSlug, newSlug], ...]
-  translation: "translation"     // JournalEntry: translation saved by "restore original" (same shape)
+  translation: "translation",    // JournalEntry: translation saved by "restore original" (same shape)
+  textDone: "textTranslated"     // JournalEntryPage: true once the page *text* was translated (since v0.5)
 };
+
+/**
+ * Text of a page. Not only "text" pages carry text: system page types such as dnd5e's
+ * "Map Location" or "Rule" pages store their content in the same `text.content` field.
+ */
+function pageText(page) {
+  const c = page.text?.content;
+  return typeof c === "string" ? c : null;
+}
+
+const hasText = (html) => typeof html === "string" && /\S/.test(html);
+
+/**
+ * Whether a page is completely translated. Versions before 0.5 only translated the text of
+ * pages of type "text" but marked other pages (e.g. Map Location) as done after translating
+ * just their title; those are treated as not done so they are picked up again.
+ */
+export function isPageDone(page) {
+  if (!page.getFlag(MODULE_ID, F.done)) return false;
+  if (page.type === "text" || page.type === "image") return true;
+  return !!page.getFlag(MODULE_ID, F.textDone) || !hasText(pageText(page));
+}
 
 function slugifyHeading(el) {
   const cls = CONFIG.JournalEntryPage?.documentClass;
@@ -73,7 +96,7 @@ export function prepareWork(entries, { force = false } = {}) {
 
     const pages = entry.pages.contents.slice().sort((a, b) => a.sort - b.sort);
     for (const page of pages) {
-      if (!force && page.getFlag(MODULE_ID, F.done)) continue;
+      if (!force && isPageDone(page)) continue;
       const orig = backup?.pages?.[page.id];
       const pageName = orig?.name ?? page.name;
       const context = `${entryName} / ${pageName}`;
@@ -91,9 +114,10 @@ export function prepareWork(entries, { force = false } = {}) {
 
       track(plainItem(`${page.uuid}::name`, pageName, context), (v) => { work.update.name = v; });
 
-      if (page.type === "text") {
+      const source = orig?.content ?? pageText(page);
+      if (page.type !== "image" && hasText(source)) {
         const root = doc().createElement("div");
-        root.innerHTML = orig?.content ?? page.text?.content ?? "";
+        root.innerHTML = source;
         work.root = root;
         work.headingEls = headings(root);
         work.oldSlugs = work.headingEls.map(slugifyHeading);
@@ -136,6 +160,7 @@ async function finalizePage(work) {
     unwrapRuns(work.root);
     update["text.content"] = work.root.innerHTML;
     update[`flags.${MODULE_ID}.${F.anchors}`] = anchors;
+    update[`flags.${MODULE_ID}.${F.textDone}`] = work.failed === 0;
   }
   await work.page.update(update);
 }
@@ -185,7 +210,7 @@ export async function relinkEntries(entries, idMap = new Map()) {
   for (const entry of entries) {
     const updates = [];
     for (const page of entry.pages) {
-      if (page.type !== "text" || !page.text?.content) continue;
+      if (!hasText(pageText(page))) continue;
       const content = rewriteLinks(page.text.content, { entryId: entry.id, entryIdMap: idMap, anchors });
       if (content !== page.text.content) updates.push({ _id: page.id, "text.content": content });
     }
@@ -268,6 +293,7 @@ function snapshot(entry) {
       content: p.text?.content ?? null,
       caption: p.image?.caption ?? null,
       done: !!p.getFlag(MODULE_ID, F.done),
+      textDone: !!p.getFlag(MODULE_ID, F.textDone),
       anchors: p.getFlag(MODULE_ID, F.anchors) ?? []
     };
   }
@@ -284,9 +310,10 @@ async function applySnapshot(entry, snap) {
       _id: page.id,
       name: s.name,
       [`flags.${MODULE_ID}.${F.done}`]: !!s.done,
+      [`flags.${MODULE_ID}.${F.textDone}`]: !!s.textDone,
       [`flags.${MODULE_ID}.${F.anchors}`]: s.anchors ?? []
     };
-    if (s.content !== null && page.type === "text") u["text.content"] = s.content;
+    if (s.content !== null && page.type !== "image") u["text.content"] = s.content;
     if (s.caption !== null && page.type === "image") u["image.caption"] = s.caption;
     updates.push(u);
   }
