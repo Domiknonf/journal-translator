@@ -2,7 +2,7 @@
   "id": "journal-translator",
   "title": "Journal Translator",
   "description": "Translates journal entries with AI (OpenAI, Claude, Gemini or any OpenAI-compatible API) while keeping links, cross-references, images, rolls and formatting intact.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "authors": [{ "name": "Domiknonf" }],
   "compatibility": { "minimum": "13", "verified": "14" },
   "esmodules": ["scripts/main.js"],

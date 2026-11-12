@@ -261,3 +261,42 @@ test("reasoning and thinking are kept low for cost", async () => {
     .complete({ system: "s", user: "u" });
   assert.equal(cap.body.generationConfig.thinkingConfig.thinkingBudget, 0);
 });
+
+test("labelless rolls and links become visible markers", () => {
+  const p = document.createElement("p");
+  p.innerHTML = 'A character who succeeds on a [[/check skill=prc dc=10]] check notices @UUID[Actor.aaaaaaaaaaaaaaaa]{three gargoyles} and @UUID[Item.bbbbbbbbbbbbbbbb].';
+  const { html, state } = protectElement(p);
+  assert.equal(html, 'A character who succeeds on a ⟦0⟧ check notices <x-e n="1">three gargoyles</x-e> and ⟦2⟧.');
+  // Marker moved to a different position, as German word order requires.
+  const de = 'Ein Charakter, dem ein ⟦0⟧-Wurf gelingt, bemerkt ⟦2⟧ und <x-e n="1">drei Gargylen</x-e>.';
+  const r = restore(de, state, document);
+  assert.ok(r.ok, r.error);
+  assert.equal(r.html, 'Ein Charakter, dem ein [[/check skill=prc dc=10]]-Wurf gelingt, bemerkt @UUID[Item.bbbbbbbbbbbbbbbb] und @UUID[Actor.aaaaaaaaaaaaaaaa]{drei Gargylen}.');
+  // A dropped or duplicated marker is rejected.
+  assert.equal(restore(de.replace("⟦2⟧", ""), state, document).ok, false);
+  assert.equal(restore(de + " ⟦0⟧", state, document).ok, false);
+});
+
+test("self-closing placeholders do not swallow text", () => {
+  const p = document.createElement("p");
+  p.innerHTML = 'Hit <span class="x"></span> the @UUID[Actor.x]{orc} now.';
+  const { html, state } = protectElement(p);
+  assert.equal(html, 'Hit <span data-k="0"></span> the <x-e n="0">orc</x-e> now.');
+  const r = restore('Triff <span data-k="0"/> den <x-e n="0">Ork</x-e> jetzt.', state, document);
+  assert.ok(r.ok, r.error);
+  assert.equal(r.html, 'Triff <span class="x"></span> den @UUID[Actor.x]{Ork} jetzt.');
+});
+
+test("failure reasons are reported", async () => {
+  const provider = { async complete({ user }) {
+    const json = JSON.parse(user.slice(user.indexOf("{")));
+    return { text: JSON.stringify({ translations: json.segments.map(() => "kaputt") }) };
+  } };
+  const item = { id: 1, html: "x ⟦0⟧", context: "c", check(out) { this.lastError = "marker mismatch (expected ⟦0⟧, got none)"; this.lastOutput = out; return null; } };
+  const warnings = [];
+  const res = await translateItems({ provider, items: [item], prompt: {}, logger: { warn: (...a) => warnings.push(a) } });
+  assert.equal(res.failed, 1);
+  assert.deepEqual(res.reasons, { "marker mismatch": 1 });
+  assert.match(warnings[0][0], /marker mismatch/);
+  assert.equal(warnings[0][1].received, "kaputt");
+});

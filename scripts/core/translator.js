@@ -26,7 +26,8 @@ export function buildSystemPrompt({ sourceLanguage, targetLanguage, glossary, in
     ``,
     `Rules:`,
     `- Keep the HTML structure. Every element carrying data-k="N" must appear exactly once in your translation with the same data-k value. Do not add attributes. You may move inline tags (<strong>, <em>, <a>, ...) when the grammar of the target language requires it.`,
-    `- <x-e n="N">...</x-e> marks a link, dice roll or rules reference. Keep every x-e element exactly once with the same n value. Translate the text inside it; if it is empty, leave it empty.`,
+    `- <x-e n="N">...</x-e> marks a link or rules reference. Keep every x-e element exactly once with the same n value and translate the text inside it.`,
+    `- Markers like ⟦3⟧ stand for dice rolls, checks or links. Copy every marker exactly once, unchanged, to the grammatically fitting place in the sentence.`,
     `- Translate every segment completely and faithfully. Do not summarise, omit, explain or add content.`,
     `- Use the established official ${targetLanguage} terminology of Dungeons & Dragons for rules terms (abilities, skills, conditions, spells, magic items, creature types).`,
     `- Keep proper names of people, places, deities and organisations unless the glossary says otherwise or an official translation is well established.`,
@@ -109,7 +110,14 @@ export async function translateItems({
     progress.done++;
     if (value === null) {
       progress.failed++;
-      logger.warn?.(`[journal-translator] Kept original for ${item.id}: ${error}`);
+      const reason = item.lastError ? `${error} – ${item.lastError}` : error;
+      logger.warn?.(`[journal-translator] Kept original for ${item.id}: ${reason}`, {
+        sent: item.html,
+        received: item.lastOutput
+      });
+      progress.reasons ??= {};
+      const key = item.lastError?.replace(/\(.*\)/, "").trim() ?? error;
+      progress.reasons[key] = (progress.reasons[key] ?? 0) + 1;
     }
     await onItem?.(item, value, error);
     onProgress?.({ ...progress, usage: { ...progress.usage } });
@@ -119,7 +127,7 @@ export async function translateItems({
     if (signal?.aborted) throw new AbortError();
     let user = batchPayload(context, batchItems);
     if (attempt > 0) {
-      user = `Previous attempt broke the markup. Be very careful to keep every data-k element and every x-e element exactly once.\n${user}`;
+      user = `Previous attempt broke the markup. Be very careful to keep every data-k element, every x-e element and every ⟦N⟧ marker exactly once.\n${user}`;
     }
     const res = await provider.complete({ system, user, schema: RESPONSE_SCHEMA, signal });
     if (res.usage) {

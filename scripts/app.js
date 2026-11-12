@@ -198,7 +198,9 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       const msg = t("Notify.Done", { done: fmt(res.done), failed: fmt(res.failed), minutes });
       const cost = priceOf(res.usage.input, res.usage.output, providerConfig().price);
       this.#setStatus(`${msg}<br>${t("Usage", { input: fmt(res.usage.input), output: fmt(res.usage.output) })}` +
-        (cost !== null ? ` ${t("ActualCost", { cost: `$${cost.toFixed(2)}` })}` : ""));
+        (cost !== null ? ` ${t("ActualCost", { cost: `$${cost.toFixed(2)}` })}` : "") +
+        (res.failed ? `<br><span class="jt-error">${t("FailedReasons")}: ${Object.entries(res.reasons ?? {})
+          .map(([r, n]) => `${foundry.utils.escapeHTML?.(r) ?? r} (${n}×)`).join(", ")}</span>` : ""));
       if (res.failed) ui.notifications.warn(msg);
       else ui.notifications.info(msg);
       if (this.mode === "copy") this.selected = new Set(res.entries.map((e) => e.id));

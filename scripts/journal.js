@@ -103,9 +103,12 @@ export function prepareWork(entries, { force = false } = {}) {
             id: `${page.uuid}::${i}`,
             html,
             context,
-            check: (out) => {
+            check(out) {
               const r = restore(out, state, doc());
-              return r.ok ? r.html : null;
+              if (r.ok) return r.html;
+              this.lastError = r.error;
+              this.lastOutput = out;
+              return null;
             }
           }, (v) => { el.innerHTML = v; });
         });

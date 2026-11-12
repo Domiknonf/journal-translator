@@ -101,6 +101,7 @@
     },
     "ActualCost": "Actual cost: {cost}.",
     "RestoreTranslation": "Restore translation",
-    "HasTranslation": "Translation saved, can be restored at no cost"
+    "HasTranslation": "Translation saved, can be restored at no cost",
+    "FailedReasons": "Why segments were kept in the original (details in the console, F12)"
   }
 }

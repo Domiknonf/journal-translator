@@ -6,16 +6,16 @@
  *    fragment and replaced by a single index attribute `data-k="N"`. The model
  *    never sees image paths, UUIDs or CSS classes, so it cannot alter them.
  *  - Foundry enrichers in text (`@UUID[...]{Label}`, `@Compendium[...]`, `@Embed[...]`,
- *    `&Reference[...]`, `[[/r 1d20]]`, `[[/check dex 15]]{Label}` ...) are replaced
- *    by `<x-e n="N">Label</x-e>`. Only the label is visible to the model and may be
- *    translated; the target is restored verbatim.
+ *    `&Reference[...]`, `[[/r 1d20]]`, `[[/check dex 15]]{Label}` ...) are replaced:
+ *      - with a label:    `<x-e n="N">Label</x-e>` (the label is translated)
+ *      - without a label: the visible marker `⟦N⟧` (models tend to drop empty tags,
+ *        but reliably keep visible markers)
+ *    The enricher itself is restored verbatim.
  *
  * These functions only depend on standard DOM APIs, so they run in the browser
  * (Foundry) and in Node tests via jsdom.
  */
 
-const TEXT_NODE = 3;
-const ELEMENT_NODE = 1;
 const SHOW_TEXT = 4;
 
 /** Matches @Word[...]{label}, &Word[...]{label} and [[...]]{label} (label optional). */
@@ -24,6 +24,10 @@ export const ENRICHER_RE =
 
 export const ATTR = "data-k";
 export const ENRICHER_TAG = "x-e";
+export const MARKER_RE = /⟦(\d+)⟧/g;
+export const marker = (i) => `⟦${i}⟧`;
+
+const VOID_TAGS = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
 
 /** Split an enricher match into its fixed core and its (optional) display label. */
 export function splitEnricher(text) {
@@ -32,6 +36,13 @@ export function splitEnricher(text) {
     if (i !== -1) return { core: text.slice(0, i + 1), label: text.slice(i + 2, -1) };
   }
   return { core: text, label: null };
+}
+
+function textNodesOf(root, doc) {
+  const walker = doc.createTreeWalker(root, SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  return nodes;
 }
 
 /**
@@ -51,11 +62,7 @@ export function protect(container) {
     attrs.push(list);
   }
 
-  const walker = doc.createTreeWalker(container, SHOW_TEXT);
-  const textNodes = [];
-  while (walker.nextNode()) textNodes.push(walker.currentNode);
-
-  for (const node of textNodes) {
+  for (const node of textNodesOf(container, doc)) {
     const value = node.nodeValue;
     ENRICHER_RE.lastIndex = 0;
     if (!ENRICHER_RE.test(value)) continue;
@@ -66,11 +73,16 @@ export function protect(container) {
     for (const m of value.matchAll(ENRICHER_RE)) {
       if (m.index > last) frag.append(doc.createTextNode(value.slice(last, m.index)));
       const { core, label } = splitEnricher(m[0]);
-      const ph = doc.createElement(ENRICHER_TAG);
-      ph.setAttribute("n", String(enrichers.length));
-      if (label) ph.textContent = label;
+      const n = enrichers.length;
+      if (label !== null && label.trim()) {
+        const ph = doc.createElement(ENRICHER_TAG);
+        ph.setAttribute("n", String(n));
+        ph.textContent = label;
+        frag.append(ph);
+      } else {
+        frag.append(doc.createTextNode(marker(n)));
+      }
       enrichers.push({ core, label });
-      frag.append(ph);
       last = m.index + m[0].length;
     }
     if (last < value.length) frag.append(doc.createTextNode(value.slice(last)));
@@ -87,17 +99,27 @@ export function protectElement(el) {
   return { html: clone.innerHTML, state };
 }
 
-function checkIndices(nodes, attr, expected) {
-  if (nodes.length !== expected) return false;
+/** True if `values` contains every index of `expected` exactly once and nothing else. */
+function sameIndices(values, expected) {
+  if (values.length !== expected.size) return false;
   const seen = new Set();
-  for (const n of nodes) {
-    const v = n.getAttribute(attr);
+  for (const v of values) {
     if (!/^\d+$/.test(v ?? "")) return false;
     const i = Number(v);
-    if (i >= expected || seen.has(i)) return false;
+    if (!expected.has(i) || seen.has(i)) return false;
     seen.add(i);
   }
   return true;
+}
+
+/**
+ * Models sometimes write `<x-e n="1"/>` or `<span data-k="2"/>`. In HTML a "/>" does not
+ * close a non-void element, so it would swallow the following text. Expand those.
+ */
+export function expandSelfClosing(html) {
+  return html.replace(/<([A-Za-z][\w-]*)(\s[^<>]*?)?\s*\/>/g, (m, tag, attrs = "") =>
+    VOID_TAGS.has(tag.toLowerCase()) ? m : `<${tag}${attrs}></${tag}>`
+  );
 }
 
 /**
@@ -106,16 +128,27 @@ function checkIndices(nodes, attr, expected) {
  */
 export function restore(translated, state, doc) {
   const tpl = doc.createElement("template");
-  tpl.innerHTML = String(translated ?? "");
+  tpl.innerHTML = expandSelfClosing(String(translated ?? ""));
   const root = tpl.content;
 
+  const all = (n) => new Set(Array.from({ length: n }, (_, i) => i));
   const kNodes = Array.from(root.querySelectorAll(`[${ATTR}]`));
-  if (!checkIndices(kNodes, ATTR, state.attrs.length)) {
+  if (!sameIndices(kNodes.map((n) => n.getAttribute(ATTR)), all(state.attrs.length))) {
     return { ok: false, error: `markup mismatch (expected ${state.attrs.length} tagged elements, got ${kNodes.length})` };
   }
+
+  const labeled = new Set();
+  const markers = new Set();
+  state.enrichers.forEach((e, i) => (e.label !== null && e.label.trim() ? labeled : markers).add(i));
+
   const eNodes = Array.from(root.querySelectorAll(ENRICHER_TAG));
-  if (!checkIndices(eNodes, "n", state.enrichers.length)) {
-    return { ok: false, error: `link mismatch (expected ${state.enrichers.length} links/rolls, got ${eNodes.length})` };
+  if (!sameIndices(eNodes.map((n) => n.getAttribute("n")), labeled)) {
+    return { ok: false, error: `link mismatch (expected ${labeled.size} labelled links, got ${eNodes.length})` };
+  }
+  const found = [];
+  for (const t of textNodesOf(root, doc)) for (const m of t.nodeValue.matchAll(MARKER_RE)) found.push(m[1]);
+  if (!sameIndices(found, markers)) {
+    return { ok: false, error: `marker mismatch (expected ${[...markers].map(marker).join(" ")}, got ${found.map(marker).join(" ") || "none"})` };
   }
 
   for (const el of kNodes) {
@@ -126,12 +159,14 @@ export function restore(translated, state, doc) {
 
   for (const el of eNodes) {
     const { core, label } = state.enrichers[Number(el.getAttribute("n"))];
-    let text = core;
-    if (label !== null) {
-      const newLabel = el.textContent.replace(/[{}]/g, "").trim();
-      text += `{${newLabel || label}}`;
-    }
-    el.replaceWith(doc.createTextNode(text));
+    const newLabel = el.textContent.replace(/[{}]/g, "").replace(MARKER_RE, "").trim();
+    el.replaceWith(doc.createTextNode(`${core}{${newLabel || label}}`));
+  }
+
+  for (const t of textNodesOf(root, doc)) {
+    MARKER_RE.lastIndex = 0;
+    if (!MARKER_RE.test(t.nodeValue)) continue;
+    t.nodeValue = t.nodeValue.replace(MARKER_RE, (m, i) => state.enrichers[Number(i)].core);
   }
 
   const holder = doc.createElement("div");
@@ -152,5 +187,3 @@ export function toPlainText(html, doc) {
   tpl.innerHTML = String(html ?? "");
   return tpl.content.textContent.replace(/\s+/g, " ").trim();
 }
-
-export const _internal = { TEXT_NODE, ELEMENT_NODE };

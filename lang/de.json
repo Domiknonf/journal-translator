@@ -101,6 +101,7 @@
     },
     "ActualCost": "Tatsächliche Kosten: {cost}.",
     "RestoreTranslation": "Übersetzung wiederherstellen",
-    "HasTranslation": "Übersetzung gespeichert, kann ohne Kosten wiederhergestellt werden"
+    "HasTranslation": "Übersetzung gespeichert, kann ohne Kosten wiederhergestellt werden",
+    "FailedReasons": "Gründe für im Original belassene Abschnitte (Details in der Konsole, F12)"
   }
 }
