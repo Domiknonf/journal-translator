@@ -172,3 +172,23 @@ test("dnd5e Map Location pages get their text translated, also when marked done 
   assert.match(page.text.content, /Ratten/);
   assert.equal(isPageDone(page), true);
 });
+
+test("check links reports links whose target is missing", async () => {
+  const { checkLinks, repairLinkLabels } = await import("../scripts/journal.js");
+  const existing = new Set(["Scene.ssssssssssssssss"]);
+  globalThis.fromUuidSync = (uuid) => (existing.has(uuid) ? {} : null);
+  const scenes = new Map([["Map 5.1", {}]]);
+  globalThis.game.collections = new Map([["Scene", { get: () => undefined, getName: (n) => scenes.get(n) }]]);
+  const e = new FakeEntry("E666666666666666", "Kapitel", [{ id: "P666666666666666", name: "Seite", type: "text", sort: 0, text: { content:
+    "<p>@UUID[Scene.ssssssssssssssss]{Karte} @UUID[Scene.xxxxxxxxxxxxxxxx]{weg} @Scene[Map 5.1] @Scene[Karte 5.1] [[/r 1d6]] @Check[dex]</p>" } }]);
+  const broken = checkLinks([e]);
+  assert.deepEqual(broken.map((b) => b.link), ["@UUID[Scene.xxxxxxxxxxxxxxxx]{weg}", "@Scene[Karte 5.1]"]);
+
+  // Repair puts back the original map label from the backup.
+  e.flags["journal-translator"] = { original: { name: "Chapter", pages: { P666666666666666: { name: "Page", content: "<p>@UUID[Scene.ssssssssssssssss]{map 5.1}</p>", caption: null } } } };
+  e.pages.contents[0].text.content = "<p>@UUID[Scene.ssssssssssssssss]{Karte 5.1}</p>";
+  assert.equal(await repairLinkLabels([e]), 1);
+  assert.equal(e.pages.contents[0].text.content, "<p>@UUID[Scene.ssssssssssssssss]{map 5.1}</p>");
+  delete globalThis.fromUuidSync;
+  delete globalThis.game.collections;
+});

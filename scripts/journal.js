@@ -14,10 +14,10 @@
  */
 
 import { MODULE_ID, getSetting, createProvider, providerConfig } from "./settings.js";
-import { protectElement, restore, escapeText, toPlainText } from "./core/protect.js";
+import { protectElement, restore, escapeText, toPlainText, keepLabelsFor } from "./core/protect.js";
 import { collectSegments, unwrapRuns, headings } from "./core/segment.js";
 import { translateItems, countRequests, buildSystemPrompt, parseTranslations, RESPONSE_SCHEMA } from "./core/translator.js";
-import { rewriteLinks, defaultSlugify } from "./core/links.js";
+import { rewriteLinks, defaultSlugify, findEnrichers, restoreLabels } from "./core/links.js";
 
 const F = {
   original: "original",          // JournalEntry: { name, pages: { [id]: { name, content, caption } } }
@@ -79,7 +79,14 @@ export function hasBackup(entry) {
 }
 
 /** Build the list of translation items and the bookkeeping to save pages when they finish. */
+/** Links to these document types keep their original label (map, character and monster names). */
+export function keepLabelPredicate() {
+  const types = String(getSetting("keepLabelTypes") ?? "Actor, Scene").split(",");
+  return keepLabelsFor(types, globalThis.foundry?.utils?.parseUuid);
+}
+
 export function prepareWork(entries, { force = false } = {}) {
+  const keepLabel = keepLabelPredicate();
   const items = [];
   const pageWorks = [];
   const nameUpdates = [];
@@ -122,7 +129,7 @@ export function prepareWork(entries, { force = false } = {}) {
         work.headingEls = headings(root);
         work.oldSlugs = work.headingEls.map(slugifyHeading);
         collectSegments(root).forEach((el, i) => {
-          const { html, state } = protectElement(el);
+          const { html, state } = protectElement(el, { keepLabel });
           track({
             id: `${page.uuid}::${i}`,
             html,
@@ -229,6 +236,66 @@ function promptOptions() {
     glossary: getSetting("glossary"),
     instructions: getSetting("instructions")
   };
+}
+
+/**
+ * Put back the original labels of links to maps, characters and monsters in pages that were
+ * translated by an older version. Uses the saved original, so it costs nothing.
+ * @returns {Promise<number>} number of pages changed
+ */
+export async function repairLinkLabels(entries) {
+  const keep = keepLabelPredicate();
+  let changed = 0;
+  for (const entry of entries) {
+    const backup = entry.getFlag(MODULE_ID, F.original);
+    if (!backup) continue;
+    const updates = [];
+    for (const page of entry.pages) {
+      const original = backup.pages?.[page.id]?.content;
+      const current = pageText(page);
+      if (!hasText(original) || !hasText(current) || original === current) continue;
+      const repaired = restoreLabels(current, original, keep);
+      if (repaired !== current) updates.push({ _id: page.id, "text.content": repaired });
+    }
+    if (updates.length) {
+      await entry.updateEmbeddedDocuments("JournalEntryPage", updates);
+      changed += updates.length;
+    }
+  }
+  return changed;
+}
+
+/** Whether an enricher target can be found. Returns null for enrichers that are not links. */
+function resolves(e, page) {
+  const fromUuidSync = globalThis.fromUuidSync ?? globalThis.foundry?.utils?.fromUuidSync;
+  if (e.kind === "UUID" || e.kind === "Embed") {
+    const uuid = e.target.split(/\s/)[0].split("#")[0];
+    try {
+      return !!fromUuidSync(uuid, { relative: page, strict: false });
+    } catch {
+      return false;
+    }
+  }
+  if (e.kind === "Compendium") {
+    try { return !!fromUuidSync(`Compendium.${e.target.split("#")[0]}`, { strict: false }); } catch { return false; }
+  }
+  const collection = game.collections?.get?.(e.kind);
+  if (!collection) return null; // @Check, @Damage, ... are not links
+  const target = e.target.split("#")[0];
+  return !!(collection.get(target) ?? collection.getName(target));
+}
+
+/** Find links in the given entries whose target does not exist (e.g. links by name). */
+export function checkLinks(entries) {
+  const broken = [];
+  for (const entry of entries) {
+    for (const page of entry.pages) {
+      for (const e of findEnrichers(pageText(page))) {
+        if (resolves(e, page) === false) broken.push({ entry: entry.name, page: page.name, link: e.raw });
+      }
+    }
+  }
+  return broken;
 }
 
 /** Send one tiny translation request to check key, model and connection. */

@@ -11,6 +11,42 @@ const ENRICHER_TARGET_RE = /(@[A-Za-z]+\[)([^\]]*)(\])/g;
 const PAGE_RE = /JournalEntryPage\.([A-Za-z0-9]{16})/;
 const ENTRY_RE = /(^|\.)JournalEntry\.([A-Za-z0-9]{16})/;
 
+const ENRICHER_ALL_RE =
+  /@([A-Za-z]+)\[((?:[^[\]]|\[[^[\]]*\])*)\](?:\{([^{}]*)\})?/g;
+
+/** All @Word[target]{label} enrichers in stored page HTML. */
+export function findEnrichers(html) {
+  return Array.from(String(html ?? "").matchAll(ENRICHER_ALL_RE), (m) => ({
+    raw: m[0],
+    kind: m[1],
+    target: m[2],
+    core: `@${m[1]}[${m[2]}]`,
+    label: m[3] ?? null,
+    index: m.index
+  }));
+}
+
+/**
+ * Put back the original labels of links for which `keep(core)` is true (e.g. links to maps
+ * and creatures), using the original page HTML. Links are matched by their target, in order.
+ */
+export function restoreLabels(translatedHtml, originalHtml, keep) {
+  const queues = new Map();
+  for (const e of findEnrichers(originalHtml)) {
+    if (e.label === null || !keep(e.core)) continue;
+    if (!queues.has(e.core)) queues.set(e.core, []);
+    queues.get(e.core).push(e.label);
+  }
+  if (!queues.size) return translatedHtml;
+  const first = new Map([...queues].map(([k, v]) => [k, v[0]]));
+  return String(translatedHtml).replace(ENRICHER_ALL_RE, (m, kind, target, label) => {
+    const core = `@${kind}[${target}]`;
+    if (label === undefined || !queues.has(core)) return m;
+    const original = queues.get(core).shift() ?? first.get(core);
+    return `${core}{${original}}`;
+  });
+}
+
 /** Default slug function, mirroring Foundry's `String#slugify({strict: true})`. */
 export function defaultSlugify(text) {
   return String(text)

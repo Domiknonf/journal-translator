@@ -329,3 +329,39 @@ test("billing errors and connection failures stop immediately", async () => {
   } finally { console.warn = origWarn; }
   assert.equal(n, 3);
 });
+
+test("enricherType finds the linked document type", async () => {
+  const { enricherType } = await import("../scripts/core/protect.js");
+  assert.equal(enricherType("@UUID[Actor.abcdefghijklmnop]"), "Actor");
+  assert.equal(enricherType("@UUID[Scene.abcdefghijklmnop]"), "Scene");
+  assert.equal(enricherType("@UUID[Compendium.dnd5e.monsters.Actor.zzzzzzzzzzzzzzzz]"), "Actor");
+  assert.equal(enricherType("@UUID[JournalEntry.aaaaaaaaaaaaaaaa.JournalEntryPage.bbbbbbbbbbbbbbbb#x]"), "JournalEntryPage");
+  assert.equal(enricherType("@UUID[Compendium.pkg.maps.aaaaaaaaaaaaaaaa]"), null);
+  assert.equal(enricherType("@UUID[Compendium.pkg.maps.aaaaaaaaaaaaaaaa]", () => ({ type: "Scene" })), "Scene");
+  assert.equal(enricherType("@Scene[Map 5.1]"), "Scene");
+  assert.equal(enricherType("[[/r 1d6]]"), null);
+});
+
+test("links to maps and creatures keep their original label", async () => {
+  const { keepLabelsFor } = await import("../scripts/core/protect.js");
+  const keepLabel = keepLabelsFor(["Actor", " Scene"]);
+  const p = document.createElement("p");
+  p.innerHTML = "The three @UUID[Actor.aaaaaaaaaaaaaaaa]{gargoyles} on @UUID[Scene.bbbbbbbbbbbbbbbb]{map 5.1} near @UUID[JournalEntry.cccccccccccccccc]{area 4}.";
+  const { html, state } = protectElement(p, { keepLabel });
+  assert.equal(html, 'The three <x-n n="0">gargoyles</x-n> on <x-n n="1">map 5.1</x-n> near <x-e n="2">area 4</x-e>.');
+  // Even if the model translates inside x-n, the original label is restored.
+  const r = restore('Die drei <x-n n="0">Gargylen</x-n> auf <x-n n="1">Karte 5.1</x-n> bei <x-e n="2">Bereich 4</x-e>.', state, document);
+  assert.ok(r.ok, r.error);
+  assert.equal(r.html, "Die drei @UUID[Actor.aaaaaaaaaaaaaaaa]{gargoyles} auf @UUID[Scene.bbbbbbbbbbbbbbbb]{map 5.1} bei @UUID[JournalEntry.cccccccccccccccc]{Bereich 4}.");
+  assert.equal(restore("Die drei auf Karte bei <x-e n=\"2\">Bereich 4</x-e>.", state, document).ok, false);
+});
+
+test("restoreLabels repairs labels translated by older versions", async () => {
+  const { restoreLabels } = await import("../scripts/core/links.js");
+  const { keepLabelsFor } = await import("../scripts/core/protect.js");
+  const keep = keepLabelsFor(["Actor", "Scene"]);
+  const original = "<p>@UUID[Actor.a]{gargoyle} and @UUID[Actor.a]{gargoyles}, @UUID[Scene.m]{map 5.1}, @UUID[JournalEntry.j]{area 4}</p>";
+  const translated = "<p>@UUID[Actor.a]{Gargyle} und @UUID[Actor.a]{Gargylen}, @UUID[Scene.m]{Karte 5.1}, @UUID[JournalEntry.j]{Bereich 4}</p>";
+  assert.equal(restoreLabels(translated, original, keep),
+    "<p>@UUID[Actor.a]{gargoyle} und @UUID[Actor.a]{gargoyles}, @UUID[Scene.m]{map 5.1}, @UUID[JournalEntry.j]{Bereich 4}</p>");
+});

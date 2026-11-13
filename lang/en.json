@@ -85,6 +85,10 @@
       },
       "PriceOutput": {
         "Name": "Output price (USD per 1M tokens)"
+      },
+      "KeepLabels": {
+        "Name": "Do not translate link labels for",
+        "Hint": "Document types whose names stay original in links (comma separated). Scene = maps, Actor = characters and monsters. Others: Item, JournalEntry, JournalEntryPage, RollTable."
       }
     },
     "Counting": "Counting tokens with the provider's tokenizer…",
@@ -109,6 +113,14 @@
       "Running": "Testing {provider} ({model})…",
       "Ok": "Connection to {provider} ({model}) works:",
       "Failed": "Connection test failed"
+    },
+    "RepairButton": "Reset names in links",
+    "RepairDone": "Restored the original map, character and monster names in links on {count} page(s).",
+    "Links": {
+      "Button": "Check links",
+      "Ok": "All links in the selected journals work.",
+      "Broken": "{count} link(s) cannot find their target:",
+      "More": "More in the console (F12)."
     }
   }
 }

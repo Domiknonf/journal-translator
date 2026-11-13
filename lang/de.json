@@ -85,6 +85,10 @@
       },
       "PriceOutput": {
         "Name": "Preis Ausgabe (USD pro 1 Mio. Token)"
+      },
+      "KeepLabels": {
+        "Name": "Link-Beschriftungen nicht übersetzen für",
+        "Hint": "Dokumenttypen, deren Namen in Links original bleiben (kommagetrennt). Scene = Karten, Actor = Charaktere und Monster. Weitere: Item, JournalEntry, JournalEntryPage, RollTable."
       }
     },
     "Counting": "Zähle Token mit dem Tokenizer des Anbieters …",
@@ -109,6 +113,14 @@
       "Running": "Teste {provider} ({model}) …",
       "Ok": "Verbindung zu {provider} ({model}) funktioniert:",
       "Failed": "Verbindungstest fehlgeschlagen"
+    },
+    "RepairButton": "Namen in Links zurücksetzen",
+    "RepairDone": "Bei {count} Seite(n) wurden Karten-, Charakter- und Monsternamen in Links auf das Original zurückgesetzt.",
+    "Links": {
+      "Button": "Links prüfen",
+      "Ok": "Alle Links in den ausgewählten Journalen funktionieren.",
+      "Broken": "{count} Link(s) finden ihr Ziel nicht:",
+      "More": "Weitere in der Konsole (F12)."
     }
   }
 }

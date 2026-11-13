@@ -1,5 +1,5 @@
 import { MODULE_ID, getSetting, setSetting, providerConfig, DEFAULT_GLOSSARY, DEFAULT_INSTRUCTIONS } from "./settings.js";
-import { translateEntries, countEntries, restoreEntry, restoreTranslation, hasBackup, hasTranslation, isPageDone, testConnection } from "./journal.js";
+import { translateEntries, countEntries, restoreEntry, restoreTranslation, hasBackup, hasTranslation, isPageDone, testConnection, repairLinkLabels, checkLinks } from "./journal.js";
 import { priceOf } from "./core/translator.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -22,7 +22,9 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       selectNone: TranslatorApp.#onSelectNone,
       resetGlossary: TranslatorApp.#onResetGlossary,
       openSettings: TranslatorApp.#onOpenSettings,
-      testConnection: TranslatorApp.#onTestConnection
+      testConnection: TranslatorApp.#onTestConnection,
+      repairLabels: TranslatorApp.#onRepairLabels,
+      checkLinks: TranslatorApp.#onCheckLinks
     }
   };
 
@@ -276,6 +278,23 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       console.error(err);
       this.#setStatus(`<span class="jt-error"><i class="fa-solid fa-xmark"></i> ${t("Test.Failed")}: ${foundry.utils.escapeHTML?.(err.message) ?? err.message}</span>`);
     }
+  }
+
+  static async #onRepairLabels() {
+    if (this.running || !this.#requireSelection()) return;
+    const n = await repairLinkLabels(this.selectedEntries);
+    this.#setStatus(t("RepairDone", { count: n }));
+  }
+
+  static #onCheckLinks() {
+    if (this.running || !this.#requireSelection()) return;
+    const broken = checkLinks(this.selectedEntries);
+    const esc = (s) => foundry.utils.escapeHTML?.(s) ?? s;
+    if (!broken.length) return this.#setStatus(`<i class="fa-solid fa-check"></i> ${t("Links.Ok")}`);
+    console.warn("[journal-translator] Broken links:", broken);
+    const list = broken.slice(0, 25).map((b) => `<li>${esc(b.entry)} / ${esc(b.page)}: <code>${esc(b.link)}</code></li>`).join("");
+    this.#setStatus(`<span class="jt-error">${t("Links.Broken", { count: broken.length })}</span><ul>${list}</ul>` +
+      (broken.length > 25 ? `<p class="hint">${t("Links.More")}</p>` : ""));
   }
 
   static #onOpenSettings() {

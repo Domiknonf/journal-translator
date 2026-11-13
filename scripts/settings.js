@@ -128,6 +128,11 @@ export function registerSettings() {
   });
 
   // Edited in the translation dialog.
+  s("keepLabelTypes", {
+    name: L("KeepLabels.Name"), hint: L("KeepLabels.Hint"),
+    scope: "world", config: true, type: String, default: "Actor, Scene"
+  });
+
   s("glossary", { scope: "world", config: false, type: String, default: DEFAULT_GLOSSARY });
   s("instructions", { scope: "world", config: false, type: String, default: DEFAULT_INSTRUCTIONS });
 }
