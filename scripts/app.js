@@ -77,9 +77,6 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       provider: cfg.label,
       model: cfg.model,
       hasKey: !!cfg.apiKey || cfg.id === "compatible",
-      // Claude API keys from the Console start with sk-ant-api; other sk-ant-... tokens
-      // (e.g. from a Claude subscription) do not work with the API.
-      keyWarning: cfg.id === "anthropic" && !!cfg.apiKey && !cfg.apiKey.startsWith("sk-ant-api"),
       source: getSetting("sourceLanguage"),
       target: getSetting("targetLanguage"),
       glossary: getSetting("glossary"),

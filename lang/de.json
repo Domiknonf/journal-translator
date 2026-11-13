@@ -40,8 +40,7 @@
       "Restored": "{count} Journal(e) wiederhergestellt.",
       "GMOnly": "Nur die Spielleitung kann Journale übersetzen.",
       "NoTranslation": "Keines der ausgewählten Journale hat eine gespeicherte Übersetzung.",
-      "TranslationRestored": "Übersetzung von {count} Journal(en) wiederhergestellt.",
-      "KeyFormat": "Dieser Schlüssel sieht nicht wie ein Claude-API-Key aus. API-Keys aus der Claude Console (platform.claude.com → API Keys) beginnen mit „sk-ant-api“. Tokens aus einem Claude-Abo (Pro/Max, Claude Code) funktionieren hier nicht."
+      "TranslationRestored": "Übersetzung von {count} Journal(en) wiederhergestellt."
     },
     "Settings": {
       "Open": "Einstellungen",

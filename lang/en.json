@@ -40,8 +40,7 @@
       "Restored": "{count} journal(s) restored.",
       "GMOnly": "Only the GM can translate journals.",
       "NoTranslation": "None of the selected journals has a saved translation.",
-      "TranslationRestored": "Translation of {count} journal(s) restored.",
-      "KeyFormat": "This does not look like a Claude API key. API keys from the Claude Console (platform.claude.com → API Keys) start with \"sk-ant-api\". Tokens from a Claude subscription (Pro/Max, Claude Code) do not work here."
+      "TranslationRestored": "Translation of {count} journal(s) restored."
     },
     "Settings": {
       "Open": "Settings",
