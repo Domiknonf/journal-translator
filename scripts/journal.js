@@ -16,7 +16,7 @@
 import { MODULE_ID, getSetting, createProvider, providerConfig } from "./settings.js";
 import { protectElement, restore, escapeText, toPlainText } from "./core/protect.js";
 import { collectSegments, unwrapRuns, headings } from "./core/segment.js";
-import { translateItems, countRequests } from "./core/translator.js";
+import { translateItems, countRequests, buildSystemPrompt, parseTranslations, RESPONSE_SCHEMA } from "./core/translator.js";
 import { rewriteLinks, defaultSlugify } from "./core/links.js";
 
 const F = {
@@ -229,6 +229,18 @@ function promptOptions() {
     glossary: getSetting("glossary"),
     instructions: getSetting("instructions")
   };
+}
+
+/** Send one tiny translation request to check key, model and connection. */
+export async function testConnection() {
+  const provider = createProvider();
+  const res = await provider.complete({
+    system: buildSystemPrompt({ ...promptOptions(), glossary: "" }),
+    user: JSON.stringify({ context: "Connection test", segments: ["The goblin attacks!"] }),
+    schema: RESPONSE_SCHEMA
+  });
+  const [text] = parseTranslations(res.text);
+  return { text, usage: res.usage };
 }
 
 /**

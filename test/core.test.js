@@ -300,3 +300,32 @@ test("failure reasons are reported", async () => {
   assert.match(warnings[0][0], /marker mismatch/);
   assert.equal(warnings[0][1].received, "kaputt");
 });
+
+test("a run stops after several failed requests in a row instead of hanging", async () => {
+  let calls = 0;
+  const provider = { async complete() { calls++; throw new Error("HTTP 529: Overloaded"); } };
+  const items = Array.from({ length: 40 }, (_, i) => ({ id: i, html: `s${i}`, context: `c${i % 4}`, check: (o) => o }));
+  const notices = [];
+  await assert.rejects(
+    translateItems({ provider, items, prompt: {}, concurrency: 1, logger: {}, onProgress: (p) => p.notice && notices.push(p.notice) }),
+    /4 requests failed in a row/
+  );
+  assert.equal(calls, 4);
+  assert.match(notices[0], /Overloaded/);
+});
+
+test("billing errors and connection failures stop immediately", async () => {
+  const { postJSON } = await import("../scripts/providers/index.js");
+  const res = (status, body) => async () => ({ ok: false, status, json: async () => body, headers: new Map(), statusText: "" });
+  await assert.rejects(
+    postJSON("https://api.anthropic.com/v1/messages", { body: {}, fetchImpl: res(400, { error: { message: "Your credit balance is too low" } }) }),
+    (e) => e.fatal && /credit balance/.test(e.message)
+  );
+  let n = 0;
+  const offline = async () => { n++; throw new TypeError("Failed to fetch"); };
+  const origWarn = console.warn; console.warn = () => {};
+  try {
+    await assert.rejects(postJSON("https://api.anthropic.com/v1/messages", { body: {}, fetchImpl: offline }), /No connection to api\.anthropic\.com/);
+  } finally { console.warn = origWarn; }
+  assert.equal(n, 3);
+});

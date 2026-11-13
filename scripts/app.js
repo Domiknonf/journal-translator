@@ -1,5 +1,5 @@
 import { MODULE_ID, getSetting, setSetting, providerConfig, DEFAULT_GLOSSARY, DEFAULT_INSTRUCTIONS } from "./settings.js";
-import { translateEntries, countEntries, restoreEntry, restoreTranslation, hasBackup, hasTranslation, isPageDone } from "./journal.js";
+import { translateEntries, countEntries, restoreEntry, restoreTranslation, hasBackup, hasTranslation, isPageDone, testConnection } from "./journal.js";
 import { priceOf } from "./core/translator.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -21,7 +21,8 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       selectAll: TranslatorApp.#onSelectAll,
       selectNone: TranslatorApp.#onSelectNone,
       resetGlossary: TranslatorApp.#onResetGlossary,
-      openSettings: TranslatorApp.#onOpenSettings
+      openSettings: TranslatorApp.#onOpenSettings,
+      testConnection: TranslatorApp.#onTestConnection
     }
   };
 
@@ -76,6 +77,9 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       provider: cfg.label,
       model: cfg.model,
       hasKey: !!cfg.apiKey || cfg.id === "compatible",
+      // Claude API keys from the Console start with sk-ant-api; other sk-ant-... tokens
+      // (e.g. from a Claude subscription) do not work with the API.
+      keyWarning: cfg.id === "anthropic" && !!cfg.apiKey && !cfg.apiKey.startsWith("sk-ant-api"),
       source: getSetting("sourceLanguage"),
       target: getSetting("targetLanguage"),
       glossary: getSetting("glossary"),
@@ -190,7 +194,8 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
           this.#setStatus(
             `<progress max="100" value="${pct}"></progress> ${pct}% · ` +
             t("Progress", { done: fmt(p.done), total: fmt(p.total), failed: fmt(p.failed),
-              input: fmt(p.usage?.input ?? 0), output: fmt(p.usage?.output ?? 0) })
+              input: fmt(p.usage?.input ?? 0), output: fmt(p.usage?.output ?? 0) }) +
+            (p.notice ? `<br><span class="jt-error">${t("Waiting")}: ${foundry.utils.escapeHTML?.(p.notice) ?? p.notice}</span>` : "")
           );
         }
       });
@@ -260,6 +265,20 @@ export class TranslatorApp extends HandlebarsApplicationMixin(ApplicationV2) {
     await setSetting("glossary", DEFAULT_GLOSSARY);
     await setSetting("instructions", DEFAULT_INSTRUCTIONS);
     this.render();
+  }
+
+  static async #onTestConnection() {
+    if (this.running) return;
+    const cfg = providerConfig();
+    this.#setStatus(`<i class="fa-solid fa-spinner fa-spin"></i> ${t("Test.Running", { provider: cfg.label, model: cfg.model })}`);
+    try {
+      const { text } = await testConnection();
+      const esc = (s) => foundry.utils.escapeHTML?.(s) ?? s;
+      this.#setStatus(`<i class="fa-solid fa-check"></i> ${t("Test.Ok", { provider: cfg.label, model: cfg.model })} „The goblin attacks!“ → „${esc(text)}“`);
+    } catch (err) {
+      console.error(err);
+      this.#setStatus(`<span class="jt-error"><i class="fa-solid fa-xmark"></i> ${t("Test.Failed")}: ${foundry.utils.escapeHTML?.(err.message) ?? err.message}</span>`);
+    }
   }
 
   static #onOpenSettings() {

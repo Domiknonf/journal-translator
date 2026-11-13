@@ -1,9 +1,11 @@
 <section class="jt-body">
   <div class="jt-provider">
     <span><strong>{{localize "JOURNAL_TRANSLATOR.Provider"}}:</strong> {{provider}} · <code>{{model}}</code> · {{source}} → {{target}}</span>
+    <button type="button" data-action="testConnection"><i class="fa-solid fa-plug"></i> {{localize "JOURNAL_TRANSLATOR.Test.Button"}}</button>
     <button type="button" data-action="openSettings"><i class="fa-solid fa-gear"></i> {{localize "JOURNAL_TRANSLATOR.Settings.Open"}}</button>
   </div>
   {{#unless hasKey}}<p class="jt-error">{{localize "JOURNAL_TRANSLATOR.Notify.NoKey"}}</p>{{/unless}}
+  {{#if keyWarning}}<p class="jt-error">{{localize "JOURNAL_TRANSLATOR.Notify.KeyFormat"}}</p>{{/if}}
 
   <div class="jt-toolbar">
     <span class="jt-count">{{localize "JOURNAL_TRANSLATOR.Selected" count=selectedCount}}</span>

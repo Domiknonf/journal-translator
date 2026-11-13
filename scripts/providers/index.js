@@ -85,8 +85,14 @@ const sleep = (ms, signal) =>
   });
 
 /** POST JSON with retries on rate limits, overload and network errors. */
-export async function postJSON(url, { headers, body, signal, retries = 5, fetchImpl = globalThis.fetch }) {
+export async function postJSON(url, { headers, body, signal, retries = 5, onRetry, fetchImpl = globalThis.fetch }) {
   let lastError;
+  const host = new URL(url).host;
+  const wait = async (ms, error) => {
+    onRetry?.(`${error.message} – ${Math.round(ms / 1000)} s`);
+    console.warn(`[journal-translator] ${error.message}; retrying in ${Math.round(ms / 1000)} s`);
+    await sleep(ms, signal);
+  };
   for (let attempt = 0; attempt <= retries; attempt++) {
     let res;
     try {
@@ -98,8 +104,11 @@ export async function postJSON(url, { headers, body, signal, retries = 5, fetchI
       });
     } catch (err) {
       if (signal?.aborted) throw err;
-      lastError = new ProviderError(`Network error: ${err.message}`);
-      await sleep(Math.min(30000, 1000 * 2 ** attempt), signal);
+      // Also what the browser reports when the server rejects the request without CORS
+      // headers (e.g. an invalid key on some APIs). A few quick retries are enough.
+      lastError = new ProviderError(`No connection to ${host} (${err.message})`);
+      if (attempt >= 2) break;
+      await wait(1000 * 2 ** attempt, lastError);
       continue;
     }
     if (res.ok) return res.json();
@@ -112,12 +121,13 @@ export async function postJSON(url, { headers, body, signal, retries = 5, fetchI
       detail = res.statusText;
     }
     const retryable = res.status === 408 || res.status === 409 || res.status === 429 || res.status >= 500;
-    // 401/403: wrong key; 404: unknown model. Retrying cannot help, so stop the whole job.
-    const fatal = [401, 403, 404].includes(res.status);
-    lastError = new ProviderError(`HTTP ${res.status}: ${detail}`, { status: res.status, fatal });
-    if (!retryable) throw lastError;
-    const ra = Number(res.headers.get("retry-after"));
-    await sleep(Number.isFinite(ra) && ra > 0 ? ra * 1000 : Math.min(60000, 2000 * 2 ** attempt), signal);
+    // 401/403: wrong key; 402 / "credit balance": billing; 404: unknown model.
+    // Retrying cannot help, so stop the whole job with this message.
+    const fatal = [401, 402, 403, 404].includes(res.status) || /credit|billing|quota|balance/i.test(detail);
+    lastError = new ProviderError(`HTTP ${res.status} from ${host}: ${detail}`, { status: res.status, fatal });
+    if (!retryable || fatal) throw lastError;
+    const ra = Number(res.headers.get?.("retry-after"));
+    await wait(Number.isFinite(ra) && ra > 0 ? ra * 1000 : Math.min(60000, 2000 * 2 ** attempt), lastError);
   }
   throw lastError;
 }
@@ -136,7 +146,7 @@ export function openAICompatible({ apiKey, model, baseUrl, strictSchema, fetchIm
   if (!model) throw new ProviderError("No model configured.", { fatal: true });
   const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
   return {
-    async complete({ system, user, schema, signal }) {
+    async complete({ system, user, schema, signal, onRetry }) {
       const body = {
         model,
         messages: [
@@ -149,7 +159,7 @@ export function openAICompatible({ apiKey, model, baseUrl, strictSchema, fetchIm
       };
       if (reasoning) body.reasoning_effort = reasoning;
       const headers = apiKey ? { authorization: `Bearer ${apiKey}` } : {};
-      const data = await postJSON(url, { headers, body, signal, fetchImpl });
+      const data = await postJSON(url, { headers, body, signal, onRetry, fetchImpl });
       const choice = data.choices?.[0];
       if (choice?.finish_reason === "length") throw new ProviderError("Response was cut off (output limit).");
       if (choice?.message?.refusal) throw new ProviderError(`Model refused: ${choice.message.refusal}`);
@@ -188,7 +198,7 @@ export function anthropic({ apiKey, model, effort, fetchImpl }) {
       for (const c of chunks) total += (await count({ messages: [{ role: "user", content: c }] }, signal)) - base + 1;
       return { system: withSystem - base, perRequest: base, chunks: total, method: "api" };
     },
-    async complete({ system, user, schema, signal }) {
+    async complete({ system, user, schema, signal, onRetry }) {
       const body = {
         model,
         max_tokens: 32000,
@@ -204,7 +214,7 @@ export function anthropic({ apiKey, model, effort, fetchImpl }) {
         body.fallbacks = "default";
         headers["anthropic-beta"] = "server-side-fallback-2026-07-01";
       }
-      const data = await postJSON("https://api.anthropic.com/v1/messages", { headers, body, signal, fetchImpl });
+      const data = await postJSON("https://api.anthropic.com/v1/messages", { headers, body, signal, onRetry, fetchImpl });
       if (data.stop_reason === "refusal") {
         throw new ProviderError(`Model declined the request${data.stop_details?.category ? ` (${data.stop_details.category})` : ""}.`);
       }
@@ -244,7 +254,7 @@ export function gemini({ apiKey, model, fetchImpl }) {
       for (const c of chunks) total += await count(c, signal);
       return { system: await count(system, signal), perRequest: 4, chunks: total, method: "api" };
     },
-    async complete({ system, user, signal }) {
+    async complete({ system, user, signal, onRetry }) {
       const body = {
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts: [{ text: user }] }],
@@ -258,7 +268,7 @@ export function gemini({ apiKey, model, fetchImpl }) {
           ...(noThinking ? { thinkingConfig: { thinkingBudget: 0 } } : {})
         }
       };
-      const data = await postJSON(url, { headers: { "x-goog-api-key": apiKey }, body, signal, fetchImpl });
+      const data = await postJSON(url, { headers: { "x-goog-api-key": apiKey }, body, signal, onRetry, fetchImpl });
       const cand = data.candidates?.[0];
       if (!cand) throw new ProviderError(`No answer${data.promptFeedback?.blockReason ? ` (${data.promptFeedback.blockReason})` : ""}.`);
       if (cand.finishReason === "MAX_TOKENS") throw new ProviderError("Response was cut off (output limit).");

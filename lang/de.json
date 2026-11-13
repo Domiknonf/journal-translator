@@ -40,7 +40,8 @@
       "Restored": "{count} Journal(e) wiederhergestellt.",
       "GMOnly": "Nur die Spielleitung kann Journale übersetzen.",
       "NoTranslation": "Keines der ausgewählten Journale hat eine gespeicherte Übersetzung.",
-      "TranslationRestored": "Übersetzung von {count} Journal(en) wiederhergestellt."
+      "TranslationRestored": "Übersetzung von {count} Journal(en) wiederhergestellt.",
+      "KeyFormat": "Dieser Schlüssel sieht nicht wie ein Claude-API-Key aus. API-Keys aus der Claude Console (platform.claude.com → API Keys) beginnen mit „sk-ant-api“. Tokens aus einem Claude-Abo (Pro/Max, Claude Code) funktionieren hier nicht."
     },
     "Settings": {
       "Open": "Einstellungen",
@@ -102,6 +103,13 @@
     "ActualCost": "Tatsächliche Kosten: {cost}.",
     "RestoreTranslation": "Übersetzung wiederherstellen",
     "HasTranslation": "Übersetzung gespeichert, kann ohne Kosten wiederhergestellt werden",
-    "FailedReasons": "Gründe für im Original belassene Abschnitte (Details in der Konsole, F12)"
+    "FailedReasons": "Gründe für im Original belassene Abschnitte (Details in der Konsole, F12)",
+    "Waiting": "Problem beim Anbieter",
+    "Test": {
+      "Button": "Verbindung testen",
+      "Running": "Teste {provider} ({model}) …",
+      "Ok": "Verbindung zu {provider} ({model}) funktioniert:",
+      "Failed": "Verbindungstest fehlgeschlagen"
+    }
   }
 }

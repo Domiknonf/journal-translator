@@ -102,7 +102,11 @@ export async function translateItems({
 }) {
   const system = buildSystemPrompt(prompt);
   const total = items.length;
-  const progress = { done: 0, total, failed: 0, usage: { input: 0, output: 0 } };
+  const progress = { done: 0, total, failed: 0, usage: { input: 0, output: 0 }, notice: null };
+  // Stop instead of grinding through every segment when the API keeps failing.
+  let consecutiveErrors = 0;
+  const MAX_CONSECUTIVE_ERRORS = 4;
+  const report = () => onProgress?.({ ...progress, usage: { ...progress.usage } });
   const results = new Map();
 
   const settle = async (item, value, error) => {
@@ -129,7 +133,24 @@ export async function translateItems({
     if (attempt > 0) {
       user = `Previous attempt broke the markup. Be very careful to keep every data-k element, every x-e element and every ⟦N⟧ marker exactly once.\n${user}`;
     }
-    const res = await provider.complete({ system, user, schema: RESPONSE_SCHEMA, signal });
+    let res;
+    try {
+      res = await provider.complete({
+        system, user, schema: RESPONSE_SCHEMA, signal,
+        onRetry: (msg) => { progress.notice = msg; report(); }
+      });
+    } catch (err) {
+      if (signal?.aborted) throw new AbortError();
+      progress.notice = err.message;
+      report();
+      if (++consecutiveErrors >= MAX_CONSECUTIVE_ERRORS && !err.fatal) {
+        err.fatal = true;
+        err.message = `${err.message} (${consecutiveErrors} requests failed in a row, stopped)`;
+      }
+      throw err;
+    }
+    consecutiveErrors = 0;
+    progress.notice = null;
     if (res.usage) {
       progress.usage.input += res.usage.input ?? 0;
       progress.usage.output += res.usage.output ?? 0;
